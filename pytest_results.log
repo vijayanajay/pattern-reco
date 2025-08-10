@@ -1,0 +1,168 @@
+.................................F
+================================== FAILURES ===================================
+____________ TestUniverseSelection.test_select_universe_empty_data ____________
+
+self = <tests.test_universe.TestUniverseSelection object at 0x00000224A8A62310>
+mock_load = <MagicMock name='load_snapshots' id='2356474362080'>
+
+    @patch('src.universe.load_snapshots')
+    def test_select_universe_empty_data(self, mock_load):
+        """Should handle empty data for symbols."""
+        # Create enough data to meet minimum requirements (100 days > 30 minimum)
+        dates = pd.date_range('2023-01-01', periods=100, freq='D')
+        mock_data = {
+            "STOCK1.NS": pd.DataFrame(),  # Empty data
+            "STOCK2.NS": pd.DataFrame({
+                'Close': [100] * len(dates),
+                'Volume': [10000] * len(dates),
+                'Open': [99] * len(dates),
+                'High': [102] * len(dates),
+                'Low': [98] * len(dates)
+            }, index=dates)
+        }
+        mock_load.return_value = mock_data
+    
+        config = {
+            "universe": {
+                "size": 2,
+                "min_turnover": 500000.0,  # 100 * 10000 = 1M turnover, so this should pass
+                "min_price": 10.0,
+                "exclude_symbols": [],
+                "lookback_years": 2
+            }
+        }
+    
+>       selected, metadata = select_universe(
+            config,
+            available_symbols=["STOCK1.NS", "STOCK2.NS"]
+        )
+
+tests\test_universe.py:379: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = {'universe': {'exclude_symbols': [], 'lookback_years': 2, 'min_price': 10.0, 'min_turnover': 500000.0, ...}}
+t0 = None, available_symbols = ['STOCK1.NS', 'STOCK2.NS']
+
+    def select_universe(
+        config: Dict[str, Any],
+        t0: date = None,
+        available_symbols: List[str] = None
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        """
+        Select universe of NSE stocks for backtesting based on median daily turnover.
+    
+        Implements Requirement 7: Universe Selection and Management
+        - Computes median daily turnover (Close * Volume in INR) over trailing 2 years
+        - Ranks stocks by median turnover and selects top N
+        - Applies filtering for penny stocks and illiquid names
+        - Handles exclusion lists
+        - Freezes universe at t0 for entire backtest
+    
+        Args:
+            config: Configuration dictionary with universe parameters
+            t0: Reference date for universe selection (default: use data end date)
+            available_symbols: List of symbols to consider (default: get from NSE list)
+    
+        Returns:
+            Tuple of (selected_symbols, universe_metadata)
+    
+        Raises:
+            ValueError: If insufficient data or no stocks meet criteria
+        """
+        universe_config = config.get("universe", {})
+        data_config = config.get("data", {})
+    
+        # Extract parameters
+        size = universe_config.get("size", 10)
+        min_turnover = universe_config.get("min_turnover", 10_000_000.0)  # \u20b91cr default
+        min_price = universe_config.get("min_price", 10.0)  # \u20b910 default
+        exclude_symbols = universe_config.get("exclude_symbols", [])
+        lookback_years = universe_config.get("lookback_years", 2)
+    
+        # Get symbols to evaluate
+        if available_symbols is None:
+            available_symbols = get_nse_symbols()
+    
+        # Remove excluded symbols
+        candidate_symbols = [s for s in available_symbols if s not in exclude_symbols]
+    
+        logger.info(f"Evaluating {len(candidate_symbols)} candidate symbols for universe selection")
+        logger.info(f"Exclusions applied: {exclude_symbols}")
+    
+        # Load data for all candidates
+        try:
+            all_data = load_snapshots(candidate_symbols)
+        except FileNotFoundError as e:
+            raise ValueError(f"Cannot select universe: {e}")
+    
+        # Compute turnover statistics for each symbol
+        symbol_stats = {}
+    
+        for symbol in candidate_symbols:
+            if symbol not in all_data:
+                logger.warning(f"No data available for {symbol}, skipping")
+                continue
+    
+            data = all_data[symbol]
+    
+            if data.empty:
+                logger.warning(f"Empty data for {symbol}, skipping")
+                continue
+    
+            # Filter data up to t0 if specified
+            if t0 is not None:
+                data = data[data.index.date <= t0]
+    
+            # Check minimum price requirement (using recent close)
+            if len(data) > 0:
+                recent_price = data['Close'].iloc[-1]
+                if recent_price < min_price:
+                    logger.debug(f"Excluding {symbol}: price {recent_price:.2f} < {min_price}")
+                    continue
+    
+            # Compute turnover statistics
+            stats = compute_turnover_stats(data, lookback_years)
+    
+            # Apply minimum turnover filter
+            if stats["median_turnover"] < min_turnover:
+                logger.debug(f"Excluding {symbol}: turnover {stats['median_turnover']:.0f} < {min_turnover}")
+                continue
+    
+            # Require minimum data availability
+            # For production: at least 70% of expected trading days
+            # For testing: at least 30 days of data
+            min_days = max(30, lookback_years * 252 * 0.7)  # At least 30 days or 70% of expected
+            if stats["valid_days"] < min_days:
+                logger.debug(f"Excluding {symbol}: only {stats['valid_days']} valid days < {min_days}")
+                continue
+    
+            symbol_stats[symbol] = stats
+    
+        if not symbol_stats:
+>           raise ValueError(
+                f"No stocks meet universe selection criteria. "
+                f"Tried {len(candidate_symbols)} symbols with filters: "
+                f"min_price={min_price}, min_turnover={min_turnover}, "
+                f"lookback_years={lookback_years}"
+            )
+E           ValueError: No stocks meet universe selection criteria. Tried 2 symbols with filters: min_price=10.0, min_turnover=500000.0, lookback_years=2
+
+src\universe.py:185: ValueError
+------------------------------ Captured log call ------------------------------
+WARNING  src.universe:universe.py:152 Empty data for STOCK1.NS, skipping
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.9.13-final-0 _______________
+
+Name              Stmts   Miss  Cover   Missing
+-----------------------------------------------
+src\__init__.py       1      0   100%
+src\config.py        78      1    99%   119
+src\data.py          38      1    97%   99
+src\universe.py      75      2    97%   146-147
+-----------------------------------------------
+TOTAL               192      4    98%
+=========================== short test summary info ===========================
+FAILED tests/test_universe.py::TestUniverseSelection::test_select_universe_empty_data
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 33 passed in 41.52s
+44.52s

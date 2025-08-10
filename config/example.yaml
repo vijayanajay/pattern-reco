@@ -1,0 +1,53 @@
+# Example configuration for anomaly pattern detection system
+# This file demonstrates all required and optional parameters
+
+run:
+  name: "gap_z_example"
+  seed: 42
+  output_dir: "runs"
+
+data:
+  source: "yfinance"
+  interval: "1d"
+  start_date: "2010-01-01"
+  end_date: "2025-01-01"
+  refresh: false
+
+universe:
+  size: 10
+  min_turnover: 10000000.0  # 1 crore INR minimum daily turnover
+  min_price: 10.0           # Minimum ₹10 per share
+  exclude_symbols: []       # Add symbols to exclude, e.g., ["SYMBOL.NS"]
+  lookback_years: 2
+
+detector:
+  name: "gap_z"
+  window_range: [20, 60]    # Rolling window parameter range
+  k_low_range: [-1.0, -2.0]  # Z-score threshold range
+  max_hold: 22              # Maximum holding period in days
+  min_hit_rate: 0.4         # Minimum hit rate for parameter selection
+
+walk_forward:
+  in_sample_years: 3        # In-sample period for parameter fitting
+  out_sample_years: 1       # Out-of-sample testing period
+  holdout_years: 2          # Final holdout period (never touched)
+  calendar_align: true      # Align splits to trading calendar
+
+execution:
+  circuit_guard_pct: 0.10   # ±10% circuit guard from previous close
+  fees_bps: 10.0            # 10 basis points per side
+  slippage_model:
+    gap_2pct: 5.0           # 5 bps slippage for gaps < 2%
+    gap_5pct: 10.0          # 10 bps slippage for gaps 2-5%
+    gap_high: 20.0          # 20 bps slippage for gaps > 5%
+
+portfolio:
+  max_concurrent: 5         # Maximum concurrent positions
+  position_size: 100000.0   # ₹1 lakh per position
+  equal_weight: true        # Equal weighting across positions
+  reentry_lockout: true     # Prevent re-entry until position closes
+
+reporting:
+  generate_plots: false     # Generate performance plots
+  output_formats: ["json", "markdown", "csv"]
+  include_unfilled: true    # Include unfilled signals in reports
