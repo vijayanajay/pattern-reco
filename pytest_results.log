@@ -1,74 +1,150 @@
-.................................F
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.4.1, pluggy-1.6.0 -- D:\Code\pattern-reco\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Code\pattern-reco
+collecting ... collected 64 items
+
+tests/test_cli.py::test_cli_help PASSED                                  [  1%]
+tests/test_cli.py::test_cli_run_with_valid_config PASSED                 [  3%]
+tests/test_cli.py::test_cli_run_with_missing_config PASSED               [  4%]
+tests/test_cli.py::test_cli_refresh_data PASSED                          [  6%]
+tests/test_cli.py::test_cli_no_command PASSED                            [  7%]
+tests/test_cli.py::test_cli_run_missing_config_arg PASSED                [  9%]
+tests/test_cli.py::test_cli_refresh_data_missing_config_arg PASSED       [ 10%]
+tests/test_cli.py::test_cli_invalid_command PASSED                       [ 12%]
+tests/test_config.py::test_load_valid_config PASSED                      [ 14%]
+tests/test_config.py::test_missing_config_file PASSED                    [ 15%]
+tests/test_config.py::test_invalid_yaml PASSED                           [ 17%]
+tests/test_config.py::test_config_validation PASSED                      [ 18%]
+tests/test_config.py::test_date_validation PASSED                        [ 20%]
+tests/test_config.py::test_example_config_file PASSED                    [ 21%]
+tests/test_data.py::TestDataFetching::test_fetch_and_snapshot_success PASSED [ 23%]
+tests/test_data.py::TestDataFetching::test_fetch_and_snapshot_empty_data PASSED [ 25%]
+tests/test_data.py::TestSnapshotManagement::test_load_snapshots_missing_directory PASSED [ 26%]
+tests/test_data.py::TestSnapshotManagement::test_load_snapshots_missing_file PASSED [ 28%]
+tests/test_universe.py::TestNSESymbols::test_get_nse_symbols_returns_list PASSED [ 29%]
+tests/test_universe.py::TestNSESymbols::test_get_nse_symbols_contains_expected_stocks PASSED [ 31%]
+tests/test_universe.py::TestNSESymbols::test_get_nse_symbols_no_duplicates PASSED [ 32%]
+tests/test_universe.py::TestNSESymbols::test_get_nse_symbols_sorted PASSED [ 34%]
+tests/test_universe.py::TestTurnoverStats::test_compute_turnover_stats_empty_data PASSED [ 35%]
+tests/test_universe.py::TestTurnoverStats::test_compute_turnover_stats_basic_calculation PASSED [ 37%]
+tests/test_universe.py::TestTurnoverStats::test_compute_turnover_stats_zero_volume_days PASSED [ 39%]
+tests/test_universe.py::TestTurnoverStats::test_compute_turnover_stats_lookback_filtering PASSED [ 40%]
+tests/test_universe.py::TestTurnoverStats::test_compute_turnover_stats_all_zero_volume PASSED [ 42%]
+tests/test_universe.py::TestUniverseSelector::test_universe_selector_initialization PASSED [ 43%]
+tests/test_universe.py::TestUniverseSelector::test_universe_selector_validation PASSED [ 45%]
+tests/test_universe.py::TestUniverseSelector::test_apply_filters_price_filter PASSED [ 46%]
+tests/test_universe.py::TestUniverseSelector::test_apply_filters_turnover_filter PASSED [ 48%]
+tests/test_universe.py::TestUniverseSelector::test_apply_filters_insufficient_data PASSED [ 50%]
+tests/test_universe.py::TestUniverseSelector::test_apply_filters_passes_all PASSED [ 51%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_basic PASSED [ 53%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_deterministic_ranking PASSED [ 54%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_price_filtering PASSED [ 56%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_turnover_filtering PASSED [ 57%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_exclusion_list PASSED [ 59%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_t0_filtering PASSED [ 60%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_insufficient_data PASSED [ 62%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_metadata_completeness PASSED [ 64%]
+tests/test_universe.py::TestSelectUniverse::test_select_universe_survivorship_bias_documentation PASSED [ 65%]
+tests/test_universe.py::TestIntegration::test_full_workflow_with_realistic_data PASSED [ 67%]
+tests/test_universe_extra.py::TestTurnoverStatsEdgeCases::test_compute_turnover_stats_negative_values PASSED [ 68%]
+tests/test_universe_extra.py::TestTurnoverStatsEdgeCases::test_compute_turnover_stats_extreme_values PASSED [ 70%]
+tests/test_universe_extra.py::TestTurnoverStatsEdgeCases::test_compute_turnover_stats_missing_columns PASSED [ 71%]
+tests/test_universe_extra.py::TestTurnoverStatsEdgeCases::test_compute_turnover_stats_single_day PASSED [ 73%]
+tests/test_universe_extra.py::TestTurnoverStatsEdgeCases::test_compute_turnover_stats_zero_lookback PASSED [ 75%]
+tests/test_universe_extra.py::TestUniverseSelectorEdgeCases::test_universe_selector_empty_config PASSED [ 76%]
+tests/test_universe_extra.py::TestUniverseSelectorEdgeCases::test_universe_selector_partial_config PASSED [ 78%]
+tests/test_universe_extra.py::TestUniverseSelectorEdgeCases::test_universe_selector_non_list_exclusions PASSED [ 79%]
+tests/test_universe_extra.py::TestUniverseSelectorEdgeCases::test_apply_filters_empty_dataframe PASSED [ 81%]
+tests/test_universe_extra.py::TestUniverseSelectorEdgeCases::test_apply_filters_single_row PASSED [ 82%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_no_data_available PASSED [ 84%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_all_filtered_out PASSED [ 85%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_t0_before_all_data PASSED [ 87%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_t0_exact_match FAILED [ 89%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_zero_size PASSED [ 90%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_larger_than_available FAILED [ 92%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_all_excluded PASSED [ 93%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_deterministic_with_t0 FAILED [ 95%]
+tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_metadata_detailed_exclusions PASSED [ 96%]
+tests/test_universe_extra.py::TestDeterministicBehavior::test_deterministic_with_different_data_orders FAILED [ 98%]
+tests/test_universe_extra.py::TestDeterministicBehavior::test_deterministic_with_floating_point_precision FAILED [100%]
+
 ================================== FAILURES ===================================
-____________ TestUniverseSelection.test_select_universe_empty_data ____________
+_______ TestSelectUniverseEdgeCases.test_select_universe_t0_exact_match _______
 
-self = <tests.test_universe.TestUniverseSelection object at 0x00000224A8A62310>
-mock_load = <MagicMock name='load_snapshots' id='2356474362080'>
+self = <tests.test_universe_extra.TestSelectUniverseEdgeCases object at 0x00000243A0EFF920>
+mock_load = <MagicMock name='load_snapshots' id='2489486852016'>
+mock_get_symbols = <MagicMock name='get_nse_symbols' id='2489486848224'>
 
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_select_universe_empty_data(self, mock_load):
-        """Should handle empty data for symbols."""
-        # Create enough data to meet minimum requirements (100 days > 30 minimum)
-        dates = pd.date_range('2023-01-01', periods=100, freq='D')
+    def test_select_universe_t0_exact_match(self, mock_load, mock_get_symbols):
+        """Test t0 filtering with exact date match."""
         mock_data = {
-            "STOCK1.NS": pd.DataFrame(),  # Empty data
-            "STOCK2.NS": pd.DataFrame({
-                'Close': [100] * len(dates),
-                'Volume': [10000] * len(dates),
-                'Open': [99] * len(dates),
-                'High': [102] * len(dates),
-                'Low': [98] * len(dates)
-            }, index=dates)
+            "TEST.NS": pd.DataFrame({
+                'Close': [100.0] * 100,
+                'Volume': [100000] * 100
+            }, index=pd.date_range('2023-01-01', periods=100, freq='D'))
         }
         mock_load.return_value = mock_data
     
-        config = {
-            "universe": {
-                "size": 2,
-                "min_turnover": 500000.0,  # 100 * 10000 = 1M turnover, so this should pass
-                "min_price": 10.0,
-                "exclude_symbols": [],
-                "lookback_years": 2
-            }
-        }
+        config = {"universe": {"size": 10}}
+        t0 = date(2023, 1, 1)  # Exact start date
     
->       selected, metadata = select_universe(
-            config,
-            available_symbols=["STOCK1.NS", "STOCK2.NS"]
-        )
+>       symbols, metadata = select_universe(config, t0=t0, available_symbols=list(mock_data.keys()))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-tests\test_universe.py:379: 
+tests\test_universe_extra.py:260: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-config = {'universe': {'exclude_symbols': [], 'lookback_years': 2, 'min_price': 10.0, 'min_turnover': 500000.0, ...}}
-t0 = None, available_symbols = ['STOCK1.NS', 'STOCK2.NS']
+config = {'universe': {'size': 10}}, t0 = datetime.date(2023, 1, 1)
+available_symbols = ['TEST.NS']
 
     def select_universe(
         config: Dict[str, Any],
-        t0: date = None,
-        available_symbols: List[str] = None
+        t0: Optional[date] = None,
+        available_symbols: Optional[List[str]] = None
     ) -> Tuple[List[str], Dict[str, Any]]:
         """
         Select universe of NSE stocks for backtesting based on median daily turnover.
     
-        Implements Requirement 7: Universe Selection and Management
-        - Computes median daily turnover (Close * Volume in INR) over trailing 2 years
-        - Ranks stocks by median turnover and selects top N
-        - Applies filtering for penny stocks and illiquid names
-        - Handles exclusion lists
-        - Freezes universe at t0 for entire backtest
+        Implements comprehensive universe selection with the following features:
+        1. **Deterministic Ranking**: Stocks ranked by median daily turnover (Close * Volume in INR)
+        2. **Quality Filtering**: Removes penny stocks (price < \u20b910) and illiquid names
+        3. **Universe Freezing**: Universe is frozen at t0 for entire backtest period
+        4. **Exclusion Handling**: Supports exclusion lists for corporate actions, etc.
+        5. **Survivorship Bias Mitigation**: Proper handling of delisted stocks
     
         Args:
             config: Configuration dictionary with universe parameters
             t0: Reference date for universe selection (default: use data end date)
+                This is the "freeze date" - universe remains unchanged after this date
             available_symbols: List of symbols to consider (default: get from NSE list)
     
         Returns:
-            Tuple of (selected_symbols, universe_metadata)
+            Tuple of (selected_symbols, universe_metadata) where:
+            - selected_symbols: List of selected stock symbols in rank order
+            - universe_metadata: Dictionary with detailed selection information
     
         Raises:
             ValueError: If insufficient data or no stocks meet criteria
+    
+        Example:
+            >>> config = {
+            ...     "universe": {
+            ...         "size": 50,
+            ...         "min_turnover": 10000000,
+            ...         "min_price": 10.0,
+            ...         "exclude_symbols": ["DELISTED.NS"],
+            ...         "lookback_years": 2
+            ...     }
+            ... }
+            >>> symbols, metadata = select_universe(config, t0=date(2023, 1, 1))
         """
+        # Initialize selector with configuration
+        selector = UniverseSelector(config)
+        selector.validate_config()
+    
         universe_config = config.get("universe", {})
         data_config = config.get("data", {})
     
@@ -86,8 +162,17 @@ t0 = None, available_symbols = ['STOCK1.NS', 'STOCK2.NS']
         # Remove excluded symbols
         candidate_symbols = [s for s in available_symbols if s not in exclude_symbols]
     
-        logger.info(f"Evaluating {len(candidate_symbols)} candidate symbols for universe selection")
+        logger.info("=" * 80)
+        logger.info("UNIVERSE SELECTION STARTED")
+        logger.info("=" * 80)
+        logger.info(f"Total symbols available: {len(available_symbols)}")
+        logger.info(f"Symbols after exclusions: {len(candidate_symbols)}")
         logger.info(f"Exclusions applied: {exclude_symbols}")
+        logger.info(f"Selection date (t0): {t0 or 'Using latest available date'}")
+        logger.info(f"Universe size target: {size}")
+        logger.info(f"Minimum turnover: \u20b9{min_turnover:,.0f}")
+        logger.info(f"Minimum price: \u20b9{min_price:.2f}")
+        logger.info(f"Lookback years: {lookback_years}")
     
         # Load data for all candidates
         try:
@@ -95,74 +180,946 @@ t0 = None, available_symbols = ['STOCK1.NS', 'STOCK2.NS']
         except FileNotFoundError as e:
             raise ValueError(f"Cannot select universe: {e}")
     
+        if not all_data:
+            raise ValueError("Cannot select universe: No data available for any candidate symbol.")
+    
+        # Track processing statistics
+        processing_stats = {
+            "total_candidates": len(candidate_symbols),
+            "missing_data": 0,
+            "empty_data": 0,
+            "filtered_by_price": 0,
+            "filtered_by_turnover": 0,
+            "filtered_by_days": 0,
+            "qualified_symbols": 0,
+            "selected_symbols": []
+        }
+    
         # Compute turnover statistics for each symbol
         symbol_stats = {}
+        detailed_exclusions = []
     
         for symbol in candidate_symbols:
             if symbol not in all_data:
                 logger.warning(f"No data available for {symbol}, skipping")
+                processing_stats["missing_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "No data available"})
                 continue
     
             data = all_data[symbol]
     
             if data.empty:
                 logger.warning(f"Empty data for {symbol}, skipping")
+                processing_stats["empty_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "Empty data"})
                 continue
     
             # Filter data up to t0 if specified
             if t0 is not None:
+                original_len = len(data)
                 data = data[data.index.date <= t0]
-    
-            # Check minimum price requirement (using recent close)
-            if len(data) > 0:
-                recent_price = data['Close'].iloc[-1]
-                if recent_price < min_price:
-                    logger.debug(f"Excluding {symbol}: price {recent_price:.2f} < {min_price}")
+                if data.empty:
+                    logger.warning(f"No data for {symbol} up to t0={t0}, skipping")
+                    detailed_exclusions.append({"symbol": symbol, "reason": f"No data up to t0={t0}"})
                     continue
+                if len(data) < original_len:
+                    logger.debug(f"Truncated {symbol} data from {original_len} to {len(data)} rows up to t0={t0}")
     
-            # Compute turnover statistics
-            stats = compute_turnover_stats(data, lookback_years)
+            passes, reason = selector.apply_filters(symbol, data)
+            if passes:
+                logger.info(f"Symbol {symbol} PASSED all filters.")
+                symbol_stats[symbol] = compute_turnover_stats(data, selector.lookback_years)
+                processing_stats["qualified_symbols"] += 1
+            else:
+                logger.info(f"Symbol {symbol} FAILED filters: {reason}")
+                detailed_exclusions.append({"symbol": symbol, "reason": reason})
+                if "Price" in reason: processing_stats["filtered_by_price"] += 1
+                elif "Turnover" in reason: processing_stats["filtered_by_turnover"] += 1
+                elif "Insufficient data" in reason: processing_stats["filtered_by_days"] += 1
     
-            # Apply minimum turnover filter
-            if stats["median_turnover"] < min_turnover:
-                logger.debug(f"Excluding {symbol}: turnover {stats['median_turnover']:.0f} < {min_turnover}")
-                continue
+        # Sort qualified symbols by median turnover in descending order
+        sorted_symbols = sorted(
+            symbol_stats.items(),
+            key=lambda item: item[1]["median_turnover"],
+            reverse=True
+        )
     
-            # Require minimum data availability
-            # For production: at least 70% of expected trading days
-            # For testing: at least 30 days of data
-            min_days = max(30, lookback_years * 252 * 0.7)  # At least 30 days or 70% of expected
-            if stats["valid_days"] < min_days:
-                logger.debug(f"Excluding {symbol}: only {stats['valid_days']} valid days < {min_days}")
-                continue
+        # Select top 'size' symbols and add rank
+        selected_symbols_with_stats = []
+        for i, (symbol, stats) in enumerate(sorted_symbols[:size]):
+            stats['rank'] = i + 1  # Add 1 for 1-based ranking
+            selected_symbols_with_stats.append((symbol, stats))
+        selected_symbols = [s[0] for s in selected_symbols_with_stats]
     
-            symbol_stats[symbol] = stats
+        processing_stats["selected_symbols"] = selected_symbols
     
-        if not symbol_stats:
->           raise ValueError(
-                f"No stocks meet universe selection criteria. "
-                f"Tried {len(candidate_symbols)} symbols with filters: "
-                f"min_price={min_price}, min_turnover={min_turnover}, "
-                f"lookback_years={lookback_years}"
-            )
-E           ValueError: No stocks meet universe selection criteria. Tried 2 symbols with filters: min_price=10.0, min_turnover=500000.0, lookback_years=2
+        logger.info("\n" + "=" * 80)
+        logger.info("UNIVERSE SELECTION COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"Total candidates processed: {processing_stats['total_candidates']}")
+        logger.info(f"Symbols with missing data: {processing_stats['missing_data']}")
+        logger.info(f"Symbols with empty data: {processing_stats['empty_data']}")
+        logger.info(f"Symbols filtered by price: {processing_stats['filtered_by_price']}")
+        logger.info(f"Symbols filtered by turnover: {processing_stats['filtered_by_turnover']}")
+        logger.info(f"Symbols filtered by insufficient days: {processing_stats['filtered_by_days']}")
+        logger.info(f"Qualified symbols: {processing_stats['qualified_symbols']}")
+        logger.info(f"Selected universe size: {len(selected_symbols)}")
+        logger.info(f"Selected symbols: {selected_symbols}")
+        logger.info("Detailed exclusions:")
+        for exc in detailed_exclusions:
+            logger.info(f"  - {exc['symbol']}: {exc['reason']}")
+    
+        if not selected_symbols:
+>           raise ValueError("No stocks met the universe selection criteria.")
+E           ValueError: No stocks met the universe selection criteria.
 
-src\universe.py:185: ValueError
+src\universe.py:444: ValueError
+___ TestSelectUniverseEdgeCases.test_select_universe_larger_than_available ____
+
+self = <tests.test_universe_extra.TestSelectUniverseEdgeCases object at 0x00000243A0EFFC50>
+mock_load = <MagicMock name='load_snapshots' id='2489486837904'>
+mock_get_symbols = <MagicMock name='get_nse_symbols' id='2489486599152'>
+
+    @patch('src.universe.get_nse_symbols')
+    @patch('src.universe.load_snapshots')
+    def test_select_universe_larger_than_available(self, mock_load, mock_get_symbols):
+        """Test when requested size is larger than available stocks."""
+        mock_data = {
+            "TEST1.NS": pd.DataFrame({
+                'Close': [100.0] * 100,
+                'Volume': [100000] * 100
+            }, index=pd.date_range('2023-01-01', periods=100, freq='D')),
+            "TEST2.NS": pd.DataFrame({
+                'Close': [200.0] * 100,
+                'Volume': [50000] * 100
+            }, index=pd.date_range('2023-01-01', periods=100, freq='D'))
+        }
+        mock_load.return_value = mock_data
+    
+        config = {"universe": {"size": 10}}  # Request more than available
+    
+>       symbols, metadata = select_universe(config, available_symbols=list(mock_data.keys()))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_universe_extra.py:299: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = {'universe': {'size': 10}}, t0 = None
+available_symbols = ['TEST1.NS', 'TEST2.NS']
+
+    def select_universe(
+        config: Dict[str, Any],
+        t0: Optional[date] = None,
+        available_symbols: Optional[List[str]] = None
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        """
+        Select universe of NSE stocks for backtesting based on median daily turnover.
+    
+        Implements comprehensive universe selection with the following features:
+        1. **Deterministic Ranking**: Stocks ranked by median daily turnover (Close * Volume in INR)
+        2. **Quality Filtering**: Removes penny stocks (price < \u20b910) and illiquid names
+        3. **Universe Freezing**: Universe is frozen at t0 for entire backtest period
+        4. **Exclusion Handling**: Supports exclusion lists for corporate actions, etc.
+        5. **Survivorship Bias Mitigation**: Proper handling of delisted stocks
+    
+        Args:
+            config: Configuration dictionary with universe parameters
+            t0: Reference date for universe selection (default: use data end date)
+                This is the "freeze date" - universe remains unchanged after this date
+            available_symbols: List of symbols to consider (default: get from NSE list)
+    
+        Returns:
+            Tuple of (selected_symbols, universe_metadata) where:
+            - selected_symbols: List of selected stock symbols in rank order
+            - universe_metadata: Dictionary with detailed selection information
+    
+        Raises:
+            ValueError: If insufficient data or no stocks meet criteria
+    
+        Example:
+            >>> config = {
+            ...     "universe": {
+            ...         "size": 50,
+            ...         "min_turnover": 10000000,
+            ...         "min_price": 10.0,
+            ...         "exclude_symbols": ["DELISTED.NS"],
+            ...         "lookback_years": 2
+            ...     }
+            ... }
+            >>> symbols, metadata = select_universe(config, t0=date(2023, 1, 1))
+        """
+        # Initialize selector with configuration
+        selector = UniverseSelector(config)
+        selector.validate_config()
+    
+        universe_config = config.get("universe", {})
+        data_config = config.get("data", {})
+    
+        # Extract parameters
+        size = universe_config.get("size", 10)
+        min_turnover = universe_config.get("min_turnover", 10_000_000.0)  # \u20b91cr default
+        min_price = universe_config.get("min_price", 10.0)  # \u20b910 default
+        exclude_symbols = universe_config.get("exclude_symbols", [])
+        lookback_years = universe_config.get("lookback_years", 2)
+    
+        # Get symbols to evaluate
+        if available_symbols is None:
+            available_symbols = get_nse_symbols()
+    
+        # Remove excluded symbols
+        candidate_symbols = [s for s in available_symbols if s not in exclude_symbols]
+    
+        logger.info("=" * 80)
+        logger.info("UNIVERSE SELECTION STARTED")
+        logger.info("=" * 80)
+        logger.info(f"Total symbols available: {len(available_symbols)}")
+        logger.info(f"Symbols after exclusions: {len(candidate_symbols)}")
+        logger.info(f"Exclusions applied: {exclude_symbols}")
+        logger.info(f"Selection date (t0): {t0 or 'Using latest available date'}")
+        logger.info(f"Universe size target: {size}")
+        logger.info(f"Minimum turnover: \u20b9{min_turnover:,.0f}")
+        logger.info(f"Minimum price: \u20b9{min_price:.2f}")
+        logger.info(f"Lookback years: {lookback_years}")
+    
+        # Load data for all candidates
+        try:
+            all_data = load_snapshots(candidate_symbols)
+        except FileNotFoundError as e:
+            raise ValueError(f"Cannot select universe: {e}")
+    
+        if not all_data:
+            raise ValueError("Cannot select universe: No data available for any candidate symbol.")
+    
+        # Track processing statistics
+        processing_stats = {
+            "total_candidates": len(candidate_symbols),
+            "missing_data": 0,
+            "empty_data": 0,
+            "filtered_by_price": 0,
+            "filtered_by_turnover": 0,
+            "filtered_by_days": 0,
+            "qualified_symbols": 0,
+            "selected_symbols": []
+        }
+    
+        # Compute turnover statistics for each symbol
+        symbol_stats = {}
+        detailed_exclusions = []
+    
+        for symbol in candidate_symbols:
+            if symbol not in all_data:
+                logger.warning(f"No data available for {symbol}, skipping")
+                processing_stats["missing_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "No data available"})
+                continue
+    
+            data = all_data[symbol]
+    
+            if data.empty:
+                logger.warning(f"Empty data for {symbol}, skipping")
+                processing_stats["empty_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "Empty data"})
+                continue
+    
+            # Filter data up to t0 if specified
+            if t0 is not None:
+                original_len = len(data)
+                data = data[data.index.date <= t0]
+                if data.empty:
+                    logger.warning(f"No data for {symbol} up to t0={t0}, skipping")
+                    detailed_exclusions.append({"symbol": symbol, "reason": f"No data up to t0={t0}"})
+                    continue
+                if len(data) < original_len:
+                    logger.debug(f"Truncated {symbol} data from {original_len} to {len(data)} rows up to t0={t0}")
+    
+            passes, reason = selector.apply_filters(symbol, data)
+            if passes:
+                logger.info(f"Symbol {symbol} PASSED all filters.")
+                symbol_stats[symbol] = compute_turnover_stats(data, selector.lookback_years)
+                processing_stats["qualified_symbols"] += 1
+            else:
+                logger.info(f"Symbol {symbol} FAILED filters: {reason}")
+                detailed_exclusions.append({"symbol": symbol, "reason": reason})
+                if "Price" in reason: processing_stats["filtered_by_price"] += 1
+                elif "Turnover" in reason: processing_stats["filtered_by_turnover"] += 1
+                elif "Insufficient data" in reason: processing_stats["filtered_by_days"] += 1
+    
+        # Sort qualified symbols by median turnover in descending order
+        sorted_symbols = sorted(
+            symbol_stats.items(),
+            key=lambda item: item[1]["median_turnover"],
+            reverse=True
+        )
+    
+        # Select top 'size' symbols and add rank
+        selected_symbols_with_stats = []
+        for i, (symbol, stats) in enumerate(sorted_symbols[:size]):
+            stats['rank'] = i + 1  # Add 1 for 1-based ranking
+            selected_symbols_with_stats.append((symbol, stats))
+        selected_symbols = [s[0] for s in selected_symbols_with_stats]
+    
+        processing_stats["selected_symbols"] = selected_symbols
+    
+        logger.info("\n" + "=" * 80)
+        logger.info("UNIVERSE SELECTION COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"Total candidates processed: {processing_stats['total_candidates']}")
+        logger.info(f"Symbols with missing data: {processing_stats['missing_data']}")
+        logger.info(f"Symbols with empty data: {processing_stats['empty_data']}")
+        logger.info(f"Symbols filtered by price: {processing_stats['filtered_by_price']}")
+        logger.info(f"Symbols filtered by turnover: {processing_stats['filtered_by_turnover']}")
+        logger.info(f"Symbols filtered by insufficient days: {processing_stats['filtered_by_days']}")
+        logger.info(f"Qualified symbols: {processing_stats['qualified_symbols']}")
+        logger.info(f"Selected universe size: {len(selected_symbols)}")
+        logger.info(f"Selected symbols: {selected_symbols}")
+        logger.info("Detailed exclusions:")
+        for exc in detailed_exclusions:
+            logger.info(f"  - {exc['symbol']}: {exc['reason']}")
+    
+        if not selected_symbols:
+>           raise ValueError("No stocks met the universe selection criteria.")
+E           ValueError: No stocks met the universe selection criteria.
+
+src\universe.py:444: ValueError
+___ TestSelectUniverseEdgeCases.test_select_universe_deterministic_with_t0 ____
+
+self = <tests.test_universe_extra.TestSelectUniverseEdgeCases object at 0x00000243A0EFF3B0>
+mock_load = <MagicMock name='load_snapshots' id='2489486595552'>
+mock_get_symbols = <MagicMock name='get_nse_symbols' id='2489487662240'>
+
+    @patch('src.universe.get_nse_symbols')
+    @patch('src.universe.load_snapshots')
+    def test_select_universe_deterministic_with_t0(self, mock_load, mock_get_symbols):
+        """Test deterministic behavior with t0 filtering."""
+        # Create data with different periods
+        mock_data = {
+            "EARLY.NS": pd.DataFrame({
+                'Close': [100.0] * 200,
+                'Volume': [100000] * 200
+            }, index=pd.date_range('2022-01-01', periods=200, freq='D')),
+            "LATE.NS": pd.DataFrame({
+                'Close': [200.0] * 100,
+                'Volume': [50000] * 100
+            }, index=pd.date_range('2023-01-01', periods=100, freq='D'))
+        }
+        mock_load.return_value = mock_data
+    
+        config = {"universe": {"size": 10}}
+        t0 = date(2022, 12, 31)
+    
+>       symbols1, metadata1 = select_universe(config, t0=t0, available_symbols=list(mock_data.keys()))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_universe_extra.py:351: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = {'universe': {'size': 10}}, t0 = datetime.date(2022, 12, 31)
+available_symbols = ['EARLY.NS', 'LATE.NS']
+
+    def select_universe(
+        config: Dict[str, Any],
+        t0: Optional[date] = None,
+        available_symbols: Optional[List[str]] = None
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        """
+        Select universe of NSE stocks for backtesting based on median daily turnover.
+    
+        Implements comprehensive universe selection with the following features:
+        1. **Deterministic Ranking**: Stocks ranked by median daily turnover (Close * Volume in INR)
+        2. **Quality Filtering**: Removes penny stocks (price < \u20b910) and illiquid names
+        3. **Universe Freezing**: Universe is frozen at t0 for entire backtest period
+        4. **Exclusion Handling**: Supports exclusion lists for corporate actions, etc.
+        5. **Survivorship Bias Mitigation**: Proper handling of delisted stocks
+    
+        Args:
+            config: Configuration dictionary with universe parameters
+            t0: Reference date for universe selection (default: use data end date)
+                This is the "freeze date" - universe remains unchanged after this date
+            available_symbols: List of symbols to consider (default: get from NSE list)
+    
+        Returns:
+            Tuple of (selected_symbols, universe_metadata) where:
+            - selected_symbols: List of selected stock symbols in rank order
+            - universe_metadata: Dictionary with detailed selection information
+    
+        Raises:
+            ValueError: If insufficient data or no stocks meet criteria
+    
+        Example:
+            >>> config = {
+            ...     "universe": {
+            ...         "size": 50,
+            ...         "min_turnover": 10000000,
+            ...         "min_price": 10.0,
+            ...         "exclude_symbols": ["DELISTED.NS"],
+            ...         "lookback_years": 2
+            ...     }
+            ... }
+            >>> symbols, metadata = select_universe(config, t0=date(2023, 1, 1))
+        """
+        # Initialize selector with configuration
+        selector = UniverseSelector(config)
+        selector.validate_config()
+    
+        universe_config = config.get("universe", {})
+        data_config = config.get("data", {})
+    
+        # Extract parameters
+        size = universe_config.get("size", 10)
+        min_turnover = universe_config.get("min_turnover", 10_000_000.0)  # \u20b91cr default
+        min_price = universe_config.get("min_price", 10.0)  # \u20b910 default
+        exclude_symbols = universe_config.get("exclude_symbols", [])
+        lookback_years = universe_config.get("lookback_years", 2)
+    
+        # Get symbols to evaluate
+        if available_symbols is None:
+            available_symbols = get_nse_symbols()
+    
+        # Remove excluded symbols
+        candidate_symbols = [s for s in available_symbols if s not in exclude_symbols]
+    
+        logger.info("=" * 80)
+        logger.info("UNIVERSE SELECTION STARTED")
+        logger.info("=" * 80)
+        logger.info(f"Total symbols available: {len(available_symbols)}")
+        logger.info(f"Symbols after exclusions: {len(candidate_symbols)}")
+        logger.info(f"Exclusions applied: {exclude_symbols}")
+        logger.info(f"Selection date (t0): {t0 or 'Using latest available date'}")
+        logger.info(f"Universe size target: {size}")
+        logger.info(f"Minimum turnover: \u20b9{min_turnover:,.0f}")
+        logger.info(f"Minimum price: \u20b9{min_price:.2f}")
+        logger.info(f"Lookback years: {lookback_years}")
+    
+        # Load data for all candidates
+        try:
+            all_data = load_snapshots(candidate_symbols)
+        except FileNotFoundError as e:
+            raise ValueError(f"Cannot select universe: {e}")
+    
+        if not all_data:
+            raise ValueError("Cannot select universe: No data available for any candidate symbol.")
+    
+        # Track processing statistics
+        processing_stats = {
+            "total_candidates": len(candidate_symbols),
+            "missing_data": 0,
+            "empty_data": 0,
+            "filtered_by_price": 0,
+            "filtered_by_turnover": 0,
+            "filtered_by_days": 0,
+            "qualified_symbols": 0,
+            "selected_symbols": []
+        }
+    
+        # Compute turnover statistics for each symbol
+        symbol_stats = {}
+        detailed_exclusions = []
+    
+        for symbol in candidate_symbols:
+            if symbol not in all_data:
+                logger.warning(f"No data available for {symbol}, skipping")
+                processing_stats["missing_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "No data available"})
+                continue
+    
+            data = all_data[symbol]
+    
+            if data.empty:
+                logger.warning(f"Empty data for {symbol}, skipping")
+                processing_stats["empty_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "Empty data"})
+                continue
+    
+            # Filter data up to t0 if specified
+            if t0 is not None:
+                original_len = len(data)
+                data = data[data.index.date <= t0]
+                if data.empty:
+                    logger.warning(f"No data for {symbol} up to t0={t0}, skipping")
+                    detailed_exclusions.append({"symbol": symbol, "reason": f"No data up to t0={t0}"})
+                    continue
+                if len(data) < original_len:
+                    logger.debug(f"Truncated {symbol} data from {original_len} to {len(data)} rows up to t0={t0}")
+    
+            passes, reason = selector.apply_filters(symbol, data)
+            if passes:
+                logger.info(f"Symbol {symbol} PASSED all filters.")
+                symbol_stats[symbol] = compute_turnover_stats(data, selector.lookback_years)
+                processing_stats["qualified_symbols"] += 1
+            else:
+                logger.info(f"Symbol {symbol} FAILED filters: {reason}")
+                detailed_exclusions.append({"symbol": symbol, "reason": reason})
+                if "Price" in reason: processing_stats["filtered_by_price"] += 1
+                elif "Turnover" in reason: processing_stats["filtered_by_turnover"] += 1
+                elif "Insufficient data" in reason: processing_stats["filtered_by_days"] += 1
+    
+        # Sort qualified symbols by median turnover in descending order
+        sorted_symbols = sorted(
+            symbol_stats.items(),
+            key=lambda item: item[1]["median_turnover"],
+            reverse=True
+        )
+    
+        # Select top 'size' symbols and add rank
+        selected_symbols_with_stats = []
+        for i, (symbol, stats) in enumerate(sorted_symbols[:size]):
+            stats['rank'] = i + 1  # Add 1 for 1-based ranking
+            selected_symbols_with_stats.append((symbol, stats))
+        selected_symbols = [s[0] for s in selected_symbols_with_stats]
+    
+        processing_stats["selected_symbols"] = selected_symbols
+    
+        logger.info("\n" + "=" * 80)
+        logger.info("UNIVERSE SELECTION COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"Total candidates processed: {processing_stats['total_candidates']}")
+        logger.info(f"Symbols with missing data: {processing_stats['missing_data']}")
+        logger.info(f"Symbols with empty data: {processing_stats['empty_data']}")
+        logger.info(f"Symbols filtered by price: {processing_stats['filtered_by_price']}")
+        logger.info(f"Symbols filtered by turnover: {processing_stats['filtered_by_turnover']}")
+        logger.info(f"Symbols filtered by insufficient days: {processing_stats['filtered_by_days']}")
+        logger.info(f"Qualified symbols: {processing_stats['qualified_symbols']}")
+        logger.info(f"Selected universe size: {len(selected_symbols)}")
+        logger.info(f"Selected symbols: {selected_symbols}")
+        logger.info("Detailed exclusions:")
+        for exc in detailed_exclusions:
+            logger.info(f"  - {exc['symbol']}: {exc['reason']}")
+    
+        if not selected_symbols:
+>           raise ValueError("No stocks met the universe selection criteria.")
+E           ValueError: No stocks met the universe selection criteria.
+
+src\universe.py:444: ValueError
 ------------------------------ Captured log call ------------------------------
-WARNING  src.universe:universe.py:152 Empty data for STOCK1.NS, skipping
-=============================== tests coverage ================================
-_______________ coverage: platform win32, python 3.9.13-final-0 _______________
+WARNING  src.universe:universe.py:393 No data for LATE.NS up to t0=2022-12-31, skipping
+___ TestDeterministicBehavior.test_deterministic_with_different_data_orders ___
 
-Name              Stmts   Miss  Cover   Missing
------------------------------------------------
-src\__init__.py       1      0   100%
-src\config.py        78      1    99%   119
-src\data.py          38      1    97%   99
-src\universe.py      75      2    97%   146-147
------------------------------------------------
-TOTAL               192      4    98%
+self = <tests.test_universe_extra.TestDeterministicBehavior object at 0x00000243A0EFDD90>
+mock_load = <MagicMock name='load_snapshots' id='2489486601264'>
+mock_get_symbols = <MagicMock name='get_nse_symbols' id='2489486600160'>
+
+    @patch('src.universe.get_nse_symbols')
+    @patch('src.universe.load_snapshots')
+    def test_deterministic_with_different_data_orders(self, mock_load, mock_get_symbols):
+        """Test that data order doesn't affect deterministic ranking."""
+        # Create identical data but in different order
+        data1 = pd.DataFrame({
+            'Close': [100.0, 200.0, 150.0],
+            'Volume': [1000, 2000, 1500]
+        }, index=pd.date_range('2023-01-01', periods=3, freq='D'))
+    
+        data2 = pd.DataFrame({
+            'Close': [150.0, 100.0, 200.0],  # Different order
+            'Volume': [1500, 1000, 2000]
+        }, index=pd.date_range('2023-01-03', periods=3, freq='D'))  # Different dates
+    
+        mock_data = {
+            "SYMBOL1.NS": data1,
+            "SYMBOL2.NS": data2
+        }
+        mock_load.return_value = mock_data
+    
+        config = {"universe": {"size": 10}}
+    
+>       symbols1, metadata1 = select_universe(config, available_symbols=list(mock_data.keys()))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_universe_extra.py:427: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = {'universe': {'size': 10}}, t0 = None
+available_symbols = ['SYMBOL1.NS', 'SYMBOL2.NS']
+
+    def select_universe(
+        config: Dict[str, Any],
+        t0: Optional[date] = None,
+        available_symbols: Optional[List[str]] = None
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        """
+        Select universe of NSE stocks for backtesting based on median daily turnover.
+    
+        Implements comprehensive universe selection with the following features:
+        1. **Deterministic Ranking**: Stocks ranked by median daily turnover (Close * Volume in INR)
+        2. **Quality Filtering**: Removes penny stocks (price < \u20b910) and illiquid names
+        3. **Universe Freezing**: Universe is frozen at t0 for entire backtest period
+        4. **Exclusion Handling**: Supports exclusion lists for corporate actions, etc.
+        5. **Survivorship Bias Mitigation**: Proper handling of delisted stocks
+    
+        Args:
+            config: Configuration dictionary with universe parameters
+            t0: Reference date for universe selection (default: use data end date)
+                This is the "freeze date" - universe remains unchanged after this date
+            available_symbols: List of symbols to consider (default: get from NSE list)
+    
+        Returns:
+            Tuple of (selected_symbols, universe_metadata) where:
+            - selected_symbols: List of selected stock symbols in rank order
+            - universe_metadata: Dictionary with detailed selection information
+    
+        Raises:
+            ValueError: If insufficient data or no stocks meet criteria
+    
+        Example:
+            >>> config = {
+            ...     "universe": {
+            ...         "size": 50,
+            ...         "min_turnover": 10000000,
+            ...         "min_price": 10.0,
+            ...         "exclude_symbols": ["DELISTED.NS"],
+            ...         "lookback_years": 2
+            ...     }
+            ... }
+            >>> symbols, metadata = select_universe(config, t0=date(2023, 1, 1))
+        """
+        # Initialize selector with configuration
+        selector = UniverseSelector(config)
+        selector.validate_config()
+    
+        universe_config = config.get("universe", {})
+        data_config = config.get("data", {})
+    
+        # Extract parameters
+        size = universe_config.get("size", 10)
+        min_turnover = universe_config.get("min_turnover", 10_000_000.0)  # \u20b91cr default
+        min_price = universe_config.get("min_price", 10.0)  # \u20b910 default
+        exclude_symbols = universe_config.get("exclude_symbols", [])
+        lookback_years = universe_config.get("lookback_years", 2)
+    
+        # Get symbols to evaluate
+        if available_symbols is None:
+            available_symbols = get_nse_symbols()
+    
+        # Remove excluded symbols
+        candidate_symbols = [s for s in available_symbols if s not in exclude_symbols]
+    
+        logger.info("=" * 80)
+        logger.info("UNIVERSE SELECTION STARTED")
+        logger.info("=" * 80)
+        logger.info(f"Total symbols available: {len(available_symbols)}")
+        logger.info(f"Symbols after exclusions: {len(candidate_symbols)}")
+        logger.info(f"Exclusions applied: {exclude_symbols}")
+        logger.info(f"Selection date (t0): {t0 or 'Using latest available date'}")
+        logger.info(f"Universe size target: {size}")
+        logger.info(f"Minimum turnover: \u20b9{min_turnover:,.0f}")
+        logger.info(f"Minimum price: \u20b9{min_price:.2f}")
+        logger.info(f"Lookback years: {lookback_years}")
+    
+        # Load data for all candidates
+        try:
+            all_data = load_snapshots(candidate_symbols)
+        except FileNotFoundError as e:
+            raise ValueError(f"Cannot select universe: {e}")
+    
+        if not all_data:
+            raise ValueError("Cannot select universe: No data available for any candidate symbol.")
+    
+        # Track processing statistics
+        processing_stats = {
+            "total_candidates": len(candidate_symbols),
+            "missing_data": 0,
+            "empty_data": 0,
+            "filtered_by_price": 0,
+            "filtered_by_turnover": 0,
+            "filtered_by_days": 0,
+            "qualified_symbols": 0,
+            "selected_symbols": []
+        }
+    
+        # Compute turnover statistics for each symbol
+        symbol_stats = {}
+        detailed_exclusions = []
+    
+        for symbol in candidate_symbols:
+            if symbol not in all_data:
+                logger.warning(f"No data available for {symbol}, skipping")
+                processing_stats["missing_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "No data available"})
+                continue
+    
+            data = all_data[symbol]
+    
+            if data.empty:
+                logger.warning(f"Empty data for {symbol}, skipping")
+                processing_stats["empty_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "Empty data"})
+                continue
+    
+            # Filter data up to t0 if specified
+            if t0 is not None:
+                original_len = len(data)
+                data = data[data.index.date <= t0]
+                if data.empty:
+                    logger.warning(f"No data for {symbol} up to t0={t0}, skipping")
+                    detailed_exclusions.append({"symbol": symbol, "reason": f"No data up to t0={t0}"})
+                    continue
+                if len(data) < original_len:
+                    logger.debug(f"Truncated {symbol} data from {original_len} to {len(data)} rows up to t0={t0}")
+    
+            passes, reason = selector.apply_filters(symbol, data)
+            if passes:
+                logger.info(f"Symbol {symbol} PASSED all filters.")
+                symbol_stats[symbol] = compute_turnover_stats(data, selector.lookback_years)
+                processing_stats["qualified_symbols"] += 1
+            else:
+                logger.info(f"Symbol {symbol} FAILED filters: {reason}")
+                detailed_exclusions.append({"symbol": symbol, "reason": reason})
+                if "Price" in reason: processing_stats["filtered_by_price"] += 1
+                elif "Turnover" in reason: processing_stats["filtered_by_turnover"] += 1
+                elif "Insufficient data" in reason: processing_stats["filtered_by_days"] += 1
+    
+        # Sort qualified symbols by median turnover in descending order
+        sorted_symbols = sorted(
+            symbol_stats.items(),
+            key=lambda item: item[1]["median_turnover"],
+            reverse=True
+        )
+    
+        # Select top 'size' symbols and add rank
+        selected_symbols_with_stats = []
+        for i, (symbol, stats) in enumerate(sorted_symbols[:size]):
+            stats['rank'] = i + 1  # Add 1 for 1-based ranking
+            selected_symbols_with_stats.append((symbol, stats))
+        selected_symbols = [s[0] for s in selected_symbols_with_stats]
+    
+        processing_stats["selected_symbols"] = selected_symbols
+    
+        logger.info("\n" + "=" * 80)
+        logger.info("UNIVERSE SELECTION COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"Total candidates processed: {processing_stats['total_candidates']}")
+        logger.info(f"Symbols with missing data: {processing_stats['missing_data']}")
+        logger.info(f"Symbols with empty data: {processing_stats['empty_data']}")
+        logger.info(f"Symbols filtered by price: {processing_stats['filtered_by_price']}")
+        logger.info(f"Symbols filtered by turnover: {processing_stats['filtered_by_turnover']}")
+        logger.info(f"Symbols filtered by insufficient days: {processing_stats['filtered_by_days']}")
+        logger.info(f"Qualified symbols: {processing_stats['qualified_symbols']}")
+        logger.info(f"Selected universe size: {len(selected_symbols)}")
+        logger.info(f"Selected symbols: {selected_symbols}")
+        logger.info("Detailed exclusions:")
+        for exc in detailed_exclusions:
+            logger.info(f"  - {exc['symbol']}: {exc['reason']}")
+    
+        if not selected_symbols:
+>           raise ValueError("No stocks met the universe selection criteria.")
+E           ValueError: No stocks met the universe selection criteria.
+
+src\universe.py:444: ValueError
+_ TestDeterministicBehavior.test_deterministic_with_floating_point_precision __
+
+self = <tests.test_universe_extra.TestDeterministicBehavior object at 0x00000243A0EFDF10>
+mock_load = <MagicMock name='load_snapshots' id='2489486368720'>
+mock_get_symbols = <MagicMock name='get_nse_symbols' id='2489486837472'>
+
+    @patch('src.universe.get_nse_symbols')
+    @patch('src.universe.load_snapshots')
+    def test_deterministic_with_floating_point_precision(self, mock_load, mock_get_symbols):
+        """Test deterministic behavior with floating point calculations."""
+        # Create data with very close turnover values
+        mock_data = {}
+    
+        for i, symbol in enumerate(["A.NS", "B.NS", "C.NS"]):
+            # Create turnover values that are very close
+            base_turnover = 100000.0 + i * 0.0001
+            dates = pd.date_range('2023-01-01', periods=100, freq='D')
+            data = pd.DataFrame({
+                'Close': [base_turnover / 1000] * 100,
+                'Volume': [1000] * 100
+            }, index=dates)
+            mock_data[symbol] = data
+    
+        mock_load.return_value = mock_data
+    
+        config = {"universe": {"size": 10}}
+    
+        results = []
+        for _ in range(5):
+>           symbols, metadata = select_universe(config, available_symbols=list(mock_data.keys()))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_universe_extra.py:460: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+config = {'universe': {'size': 10}}, t0 = None
+available_symbols = ['A.NS', 'B.NS', 'C.NS']
+
+    def select_universe(
+        config: Dict[str, Any],
+        t0: Optional[date] = None,
+        available_symbols: Optional[List[str]] = None
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        """
+        Select universe of NSE stocks for backtesting based on median daily turnover.
+    
+        Implements comprehensive universe selection with the following features:
+        1. **Deterministic Ranking**: Stocks ranked by median daily turnover (Close * Volume in INR)
+        2. **Quality Filtering**: Removes penny stocks (price < \u20b910) and illiquid names
+        3. **Universe Freezing**: Universe is frozen at t0 for entire backtest period
+        4. **Exclusion Handling**: Supports exclusion lists for corporate actions, etc.
+        5. **Survivorship Bias Mitigation**: Proper handling of delisted stocks
+    
+        Args:
+            config: Configuration dictionary with universe parameters
+            t0: Reference date for universe selection (default: use data end date)
+                This is the "freeze date" - universe remains unchanged after this date
+            available_symbols: List of symbols to consider (default: get from NSE list)
+    
+        Returns:
+            Tuple of (selected_symbols, universe_metadata) where:
+            - selected_symbols: List of selected stock symbols in rank order
+            - universe_metadata: Dictionary with detailed selection information
+    
+        Raises:
+            ValueError: If insufficient data or no stocks meet criteria
+    
+        Example:
+            >>> config = {
+            ...     "universe": {
+            ...         "size": 50,
+            ...         "min_turnover": 10000000,
+            ...         "min_price": 10.0,
+            ...         "exclude_symbols": ["DELISTED.NS"],
+            ...         "lookback_years": 2
+            ...     }
+            ... }
+            >>> symbols, metadata = select_universe(config, t0=date(2023, 1, 1))
+        """
+        # Initialize selector with configuration
+        selector = UniverseSelector(config)
+        selector.validate_config()
+    
+        universe_config = config.get("universe", {})
+        data_config = config.get("data", {})
+    
+        # Extract parameters
+        size = universe_config.get("size", 10)
+        min_turnover = universe_config.get("min_turnover", 10_000_000.0)  # \u20b91cr default
+        min_price = universe_config.get("min_price", 10.0)  # \u20b910 default
+        exclude_symbols = universe_config.get("exclude_symbols", [])
+        lookback_years = universe_config.get("lookback_years", 2)
+    
+        # Get symbols to evaluate
+        if available_symbols is None:
+            available_symbols = get_nse_symbols()
+    
+        # Remove excluded symbols
+        candidate_symbols = [s for s in available_symbols if s not in exclude_symbols]
+    
+        logger.info("=" * 80)
+        logger.info("UNIVERSE SELECTION STARTED")
+        logger.info("=" * 80)
+        logger.info(f"Total symbols available: {len(available_symbols)}")
+        logger.info(f"Symbols after exclusions: {len(candidate_symbols)}")
+        logger.info(f"Exclusions applied: {exclude_symbols}")
+        logger.info(f"Selection date (t0): {t0 or 'Using latest available date'}")
+        logger.info(f"Universe size target: {size}")
+        logger.info(f"Minimum turnover: \u20b9{min_turnover:,.0f}")
+        logger.info(f"Minimum price: \u20b9{min_price:.2f}")
+        logger.info(f"Lookback years: {lookback_years}")
+    
+        # Load data for all candidates
+        try:
+            all_data = load_snapshots(candidate_symbols)
+        except FileNotFoundError as e:
+            raise ValueError(f"Cannot select universe: {e}")
+    
+        if not all_data:
+            raise ValueError("Cannot select universe: No data available for any candidate symbol.")
+    
+        # Track processing statistics
+        processing_stats = {
+            "total_candidates": len(candidate_symbols),
+            "missing_data": 0,
+            "empty_data": 0,
+            "filtered_by_price": 0,
+            "filtered_by_turnover": 0,
+            "filtered_by_days": 0,
+            "qualified_symbols": 0,
+            "selected_symbols": []
+        }
+    
+        # Compute turnover statistics for each symbol
+        symbol_stats = {}
+        detailed_exclusions = []
+    
+        for symbol in candidate_symbols:
+            if symbol not in all_data:
+                logger.warning(f"No data available for {symbol}, skipping")
+                processing_stats["missing_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "No data available"})
+                continue
+    
+            data = all_data[symbol]
+    
+            if data.empty:
+                logger.warning(f"Empty data for {symbol}, skipping")
+                processing_stats["empty_data"] += 1
+                detailed_exclusions.append({"symbol": symbol, "reason": "Empty data"})
+                continue
+    
+            # Filter data up to t0 if specified
+            if t0 is not None:
+                original_len = len(data)
+                data = data[data.index.date <= t0]
+                if data.empty:
+                    logger.warning(f"No data for {symbol} up to t0={t0}, skipping")
+                    detailed_exclusions.append({"symbol": symbol, "reason": f"No data up to t0={t0}"})
+                    continue
+                if len(data) < original_len:
+                    logger.debug(f"Truncated {symbol} data from {original_len} to {len(data)} rows up to t0={t0}")
+    
+            passes, reason = selector.apply_filters(symbol, data)
+            if passes:
+                logger.info(f"Symbol {symbol} PASSED all filters.")
+                symbol_stats[symbol] = compute_turnover_stats(data, selector.lookback_years)
+                processing_stats["qualified_symbols"] += 1
+            else:
+                logger.info(f"Symbol {symbol} FAILED filters: {reason}")
+                detailed_exclusions.append({"symbol": symbol, "reason": reason})
+                if "Price" in reason: processing_stats["filtered_by_price"] += 1
+                elif "Turnover" in reason: processing_stats["filtered_by_turnover"] += 1
+                elif "Insufficient data" in reason: processing_stats["filtered_by_days"] += 1
+    
+        # Sort qualified symbols by median turnover in descending order
+        sorted_symbols = sorted(
+            symbol_stats.items(),
+            key=lambda item: item[1]["median_turnover"],
+            reverse=True
+        )
+    
+        # Select top 'size' symbols and add rank
+        selected_symbols_with_stats = []
+        for i, (symbol, stats) in enumerate(sorted_symbols[:size]):
+            stats['rank'] = i + 1  # Add 1 for 1-based ranking
+            selected_symbols_with_stats.append((symbol, stats))
+        selected_symbols = [s[0] for s in selected_symbols_with_stats]
+    
+        processing_stats["selected_symbols"] = selected_symbols
+    
+        logger.info("\n" + "=" * 80)
+        logger.info("UNIVERSE SELECTION COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"Total candidates processed: {processing_stats['total_candidates']}")
+        logger.info(f"Symbols with missing data: {processing_stats['missing_data']}")
+        logger.info(f"Symbols with empty data: {processing_stats['empty_data']}")
+        logger.info(f"Symbols filtered by price: {processing_stats['filtered_by_price']}")
+        logger.info(f"Symbols filtered by turnover: {processing_stats['filtered_by_turnover']}")
+        logger.info(f"Symbols filtered by insufficient days: {processing_stats['filtered_by_days']}")
+        logger.info(f"Qualified symbols: {processing_stats['qualified_symbols']}")
+        logger.info(f"Selected universe size: {len(selected_symbols)}")
+        logger.info(f"Selected symbols: {selected_symbols}")
+        logger.info("Detailed exclusions:")
+        for exc in detailed_exclusions:
+            logger.info(f"  - {exc['symbol']}: {exc['reason']}")
+    
+        if not selected_symbols:
+>           raise ValueError("No stocks met the universe selection criteria.")
+E           ValueError: No stocks met the universe selection criteria.
+
+src\universe.py:444: ValueError
 =========================== short test summary info ===========================
-FAILED tests/test_universe.py::TestUniverseSelection::test_select_universe_empty_data
-!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
-1 failed, 33 passed in 41.52s
-44.52s
+FAILED tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_t0_exact_match
+FAILED tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_larger_than_available
+FAILED tests/test_universe_extra.py::TestSelectUniverseEdgeCases::test_select_universe_deterministic_with_t0
+FAILED tests/test_universe_extra.py::TestDeterministicBehavior::test_deterministic_with_different_data_orders
+FAILED tests/test_universe_extra.py::TestDeterministicBehavior::test_deterministic_with_floating_point_precision
+======================== 5 failed, 59 passed in 28.62s ========================

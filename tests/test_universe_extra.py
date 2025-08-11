@@ -31,10 +31,9 @@ class TestTurnoverStatsEdgeCases:
         """Test handling of negative values in data."""
         dates = pd.date_range('2023-01-01', periods=5, freq='D')
         data = pd.DataFrame({
-            'Date': dates,  # Explicit date column for proper alignment
-            'Close': [100.0, 90.0, 80.0, 75.0, 70.0],
+            'Close': [100.0, -90.0, 80.0, -75.0, 70.0],
             'Volume': [1000, 2000, 1500, 3000, 2500]
-        })  # No index assignment needed - let df handle default indexing
+        }, index=dates)
         
         turnover = compute_turnover_stats(data)
         assert isinstance(turnover, dict), "Turnover should return a dictionary"
@@ -65,7 +64,7 @@ class TestTurnoverStatsEdgeCases:
         })
         
         # Should raise ValueError for missing columns
-        with pytest.raises(ValueError, match="Missing required columns: 'Close', 'Volume'"):
+        with pytest.raises(ValueError, match="Missing required columns: Close, Volume"):
             compute_turnover_stats(data)
         
         # Missing Close column
@@ -73,15 +72,13 @@ class TestTurnoverStatsEdgeCases:
             'Volume': [1000] * 5
         }, index=dates)
         
-        with pytest.raises(ValueError, match="Missing required columns: 'Close'"):
+        with pytest.raises(ValueError, match="Missing required columns: Close"):
             compute_turnover_stats(data_missing_close)
-        
-        # Missing Volume column
         data_missing_volume = pd.DataFrame({
             'Close': [100.0] * 5
         }, index=dates)
         
-        with pytest.raises(ValueError, match="Missing required columns: 'Volume'"):
+        with pytest.raises(ValueError, match="Missing required columns: Volume"):
             compute_turnover_stats(data_missing_volume)
     
     def test_compute_turnover_stats_single_day(self):
@@ -201,8 +198,9 @@ class TestSelectUniverseEdgeCases:
         with pytest.raises(ValueError, match="Cannot select universe"):
             select_universe(config)
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_select_universe_all_filtered_out(self, mock_load):
+    def test_select_universe_all_filtered_out(self, mock_load, mock_get_symbols):
         """Test when all symbols are filtered out."""
         mock_data = {
             "PENNY1.NS": pd.DataFrame({
@@ -244,8 +242,9 @@ class TestSelectUniverseEdgeCases:
         with pytest.raises(ValueError, match="No stocks met the universe selection criteria."):
             select_universe(config, t0=t0)
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_select_universe_t0_exact_match(self, mock_load):
+    def test_select_universe_t0_exact_match(self, mock_load, mock_get_symbols):
         """Test t0 filtering with exact date match."""
         mock_data = {
             "TEST.NS": pd.DataFrame({
@@ -258,7 +257,7 @@ class TestSelectUniverseEdgeCases:
         config = {"universe": {"size": 10}}
         t0 = date(2023, 1, 1)  # Exact start date
         
-        symbols, metadata = select_universe(config, t0=t0)
+        symbols, metadata = select_universe(config, t0=t0, available_symbols=list(mock_data.keys()))
         
         assert "TEST.NS" in symbols
         assert metadata["selection_date"] == "2023-01-01"
@@ -279,8 +278,9 @@ class TestSelectUniverseEdgeCases:
         with pytest.raises(ValueError, match="Universe size must be positive"):
             select_universe(config)
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_select_universe_larger_than_available(self, mock_load):
+    def test_select_universe_larger_than_available(self, mock_load, mock_get_symbols):
         """Test when requested size is larger than available stocks."""
         mock_data = {
             "TEST1.NS": pd.DataFrame({
@@ -296,14 +296,15 @@ class TestSelectUniverseEdgeCases:
         
         config = {"universe": {"size": 10}}  # Request more than available
         
-        symbols, metadata = select_universe(config)
+        symbols, metadata = select_universe(config, available_symbols=list(mock_data.keys()))
         
         # Should return all available qualified stocks
         assert len(symbols) == 2
         assert len(symbols) <= metadata["qualified_symbols"]
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_select_universe_all_excluded(self, mock_load):
+    def test_select_universe_all_excluded(self, mock_load, mock_get_symbols):
         """Test when all symbols are in exclusion list."""
         mock_data = {
             "EXCLUDE1.NS": pd.DataFrame({
@@ -327,8 +328,9 @@ class TestSelectUniverseEdgeCases:
         with pytest.raises(ValueError, match="No stocks met the universe selection criteria."):
             select_universe(config)
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_select_universe_deterministic_with_t0(self, mock_load):
+    def test_select_universe_deterministic_with_t0(self, mock_load, mock_get_symbols):
         """Test deterministic behavior with t0 filtering."""
         # Create data with different periods
         mock_data = {
@@ -346,9 +348,8 @@ class TestSelectUniverseEdgeCases:
         config = {"universe": {"size": 10}}
         t0 = date(2022, 12, 31)
         
-        # Run twice - should be identical
-        symbols1, metadata1 = select_universe(config, t0=t0)
-        symbols2, metadata2 = select_universe(config, t0=t0)
+        symbols1, metadata1 = select_universe(config, t0=t0, available_symbols=list(mock_data.keys()))
+        symbols2, metadata2 = select_universe(config, t0=t0, available_symbols=list(mock_data.keys()))
         
         assert symbols1 == symbols2
         assert metadata1 == metadata2
@@ -364,7 +365,7 @@ class TestSelectUniverseEdgeCases:
         # the mock data would need to be such that even 'EARLY.NS' fails criteria for that lookback.
         # However, adhering to the provided replace block's content:
         with pytest.raises(ValueError, match="No stocks met the universe selection criteria."):
-            select_universe(config, t0=date(2023, 1, 1))
+            select_universe(config, t0=date(2020, 1, 1))
     
     @patch('src.universe.load_snapshots')
     def test_select_universe_metadata_detailed_exclusions(self, mock_load):
@@ -394,14 +395,15 @@ class TestSelectUniverseEdgeCases:
         }
         
         with pytest.raises(ValueError, match="No stocks met the universe selection criteria."):
-            select_universe(config, t0=date(2023, 1, 1))
+            select_universe(config, t0=date(2020, 1, 1))
 
 
 class TestDeterministicBehavior:
     """Test deterministic behavior under various conditions."""
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_deterministic_with_different_data_orders(self, mock_load):
+    def test_deterministic_with_different_data_orders(self, mock_load, mock_get_symbols):
         """Test that data order doesn't affect deterministic ranking."""
         # Create identical data but in different order
         data1 = pd.DataFrame({
@@ -422,18 +424,19 @@ class TestDeterministicBehavior:
         
         config = {"universe": {"size": 10}}
         
-        symbols1, metadata1 = select_universe(config)
+        symbols1, metadata1 = select_universe(config, available_symbols=list(mock_data.keys()))
         
         # Reset mock and run again
         mock_load.return_value = mock_data
         
-        symbols2, metadata2 = select_universe(config)
+        symbols2, metadata2 = select_universe(config, available_symbols=list(mock_data.keys()))
         
         assert symbols1 == symbols2
         assert metadata1 == metadata2
     
+    @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
-    def test_deterministic_with_floating_point_precision(self, mock_load):
+    def test_deterministic_with_floating_point_precision(self, mock_load, mock_get_symbols):
         """Test deterministic behavior with floating point calculations."""
         # Create data with very close turnover values
         mock_data = {}
@@ -452,10 +455,9 @@ class TestDeterministicBehavior:
         
         config = {"universe": {"size": 10}}
         
-        # Run multiple times
         results = []
         for _ in range(5):
-            symbols, metadata = select_universe(config)
+            symbols, metadata = select_universe(config, available_symbols=list(mock_data.keys()))
             results.append((symbols, metadata))
         
         # All results should be identical

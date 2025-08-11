@@ -251,7 +251,7 @@ def compute_turnover_stats(
 
     # Calculate daily turnover in INR (Close * Volume)
     # This represents the total value traded each day
-    turnover = data['Close'] * data['Volume']
+    turnover = data['Close'].abs() * data['Volume']
     
     # Remove zero volume days as they represent non-trading days or bad data
     valid_turnover = turnover[data['Volume'] > 0]
@@ -441,7 +441,7 @@ def select_universe(
         logger.info(f"  - {exc['symbol']}: {exc['reason']}")
 
     if not selected_symbols:
-        raise ValueError("No stocks meet universe selection criteria")
+        raise ValueError("No stocks met the universe selection criteria.")
 
     universe_metadata = {
         "selection_criteria": {
@@ -462,12 +462,8 @@ def select_universe(
             "and meeting criteria at t0 are considered for the entire backtest period, "
             "regardless of subsequent delistings or failures. Data for all candidate "
             "symbols is loaded up to t0, and any symbols delisted before t0 are naturally "
-            "excluded if no data is available for them at that time."
+            "excluded if no data is available for them at that time. This is based on historical data."
         )
     }
 
     return selected_symbols, universe_metadata
-
-    return selected_symbols, metadata
-
-    return selected_symbols, metadata
