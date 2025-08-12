@@ -163,7 +163,7 @@ class TestUniverseSelector:
             UniverseSelector({"universe": {"size": 0}})
             
         # Test invalid turnover
-        with pytest.raises(ValueError, match="Minimum turnover must surpass base market activity requirements"):
+        with pytest.raises(ValueError, match="Minimum turnover must be non-negative"):
             UniverseSelector({"universe": {"min_turnover": -1}})
             
         # Test invalid price

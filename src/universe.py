@@ -114,8 +114,8 @@ class UniverseSelector:
         if self.size <= 0:
             raise ValueError(f"Universe size must be positive, got {self.size}")
         
-        if self.min_turnover < 1e6:
-            raise ValueError(f"Minimum turnover must surpass base market activity requirements, got {self.min_turnover}")
+        if self.min_turnover < 0:
+            raise ValueError(f"Minimum turnover must be non-negative, got {self.min_turnover}")
         
         if self.min_price < 0:
             raise ValueError(f"Minimum price must be non-negative, got {self.min_price}")
@@ -242,7 +242,7 @@ def compute_turnover_stats(
 
     # Filter to lookback period first to reduce data size
     if lookback_years > 0:
-        max_days = lookback_years * 252  # Approximate trading days per year
+        max_days = int(lookback_years * 252)  # Approximate trading days per year
         if len(data) > max_days:
             data = data.tail(max_days)
             logger.debug(f"Truncated data to last {max_days} days")
