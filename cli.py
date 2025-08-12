@@ -51,7 +51,7 @@ def main():
             
             # Get symbols from universe selection
             from src.universe import select_universe
-            symbols = select_universe(config)
+            symbols, _ = select_universe(config)
             
             fetch_and_snapshot(symbols, config)
             print("Data refresh completed successfully")
