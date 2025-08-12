@@ -287,6 +287,43 @@ class TestSelectUniverse:
         assert isinstance(metadata, dict)
         assert "selection_criteria" in metadata
         assert "symbol_details" in metadata
+
+    @patch('src.universe.get_nse_symbols')
+    @patch('src.universe.load_snapshots')
+    def test_select_universe_logs_detailed_exclusions(self, mock_load, mock_get_symbols):
+        """Test that detailed exclusions are logged correctly."""
+        mock_data = {
+            "LIQUID.NS": pd.DataFrame({
+                'Close': [100.0] * 400,
+                'Volume': [100000] * 400
+            }, index=pd.date_range('2022-01-01', periods=400, freq='D')),
+            "PENNY.NS": pd.DataFrame({
+                'Close': [5.0] * 400,
+                'Volume': [100000] * 400
+            }, index=pd.date_range('2022-01-01', periods=400, freq='D')),
+            "ILLIQUID.NS": pd.DataFrame({
+                'Close': [100.0] * 400,
+                'Volume': [100] * 400
+            }, index=pd.date_range('2022-01-01', periods=400, freq='D')),
+        }
+        mock_load.return_value = mock_data
+        mock_get_symbols.return_value = list(mock_data.keys())
+
+        config = {
+            "universe": {
+                "size": 1,
+                "min_price": 10.0,
+                "min_turnover": 1000000
+            }
+        }
+
+        symbols, metadata = select_universe(config)
+
+        assert "LIQUID.NS" in symbols
+        assert len(symbols) == 1
+        assert len(metadata["detailed_exclusions"]) == 2
+        assert any(d['symbol'] == 'PENNY.NS' for d in metadata['detailed_exclusions'])
+        assert any(d['symbol'] == 'ILLIQUID.NS' for d in metadata['detailed_exclusions'])
     
     @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
@@ -507,6 +544,43 @@ class TestSelectUniverse:
         assert "TEST.NS" in metadata["symbol_details"]
         assert "median_turnover" in metadata["symbol_details"]["TEST.NS"]
         assert "rank" in metadata["symbol_details"]["TEST.NS"]
+
+    @patch('src.universe.get_nse_symbols')
+    @patch('src.universe.load_snapshots')
+    def test_select_universe_logs_detailed_exclusions(self, mock_load, mock_get_symbols):
+        """Test that detailed exclusions are logged correctly."""
+        mock_data = {
+            "LIQUID.NS": pd.DataFrame({
+                'Close': [100.0] * 400,
+                'Volume': [100000] * 400
+            }, index=pd.date_range('2022-01-01', periods=400, freq='D')),
+            "PENNY.NS": pd.DataFrame({
+                'Close': [5.0] * 400,
+                'Volume': [100000] * 400
+            }, index=pd.date_range('2022-01-01', periods=400, freq='D')),
+            "ILLIQUID.NS": pd.DataFrame({
+                'Close': [100.0] * 400,
+                'Volume': [100] * 400
+            }, index=pd.date_range('2022-01-01', periods=400, freq='D')),
+        }
+        mock_load.return_value = mock_data
+        mock_get_symbols.return_value = list(mock_data.keys())
+
+        config = {
+            "universe": {
+                "size": 1,
+                "min_price": 10.0,
+                "min_turnover": 1000000
+            }
+        }
+
+        symbols, metadata = select_universe(config)
+
+        assert "LIQUID.NS" in symbols
+        assert len(symbols) == 1
+        assert len(metadata["detailed_exclusions"]) == 2
+        assert any(d['symbol'] == 'PENNY.NS' for d in metadata['detailed_exclusions'])
+        assert any(d['symbol'] == 'ILLIQUID.NS' for d in metadata['detailed_exclusions'])
     
     @patch('src.universe.get_nse_symbols')
     @patch('src.universe.load_snapshots')
