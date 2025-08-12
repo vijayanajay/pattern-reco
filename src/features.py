@@ -44,3 +44,33 @@ class FeatureEngine:
         return df.assign(
             **{f"{column}_zscore_{window}": (df[column] - mean) / std.replace(0, np.nan)}
         )
+
+    @staticmethod
+    def add_gap_z_signal(df: pd.DataFrame, window: int, k_low: float) -> pd.DataFrame:
+        """
+        Generates Gap-Z signals and scores.
+
+        A signal is generated when the z-score of the gap percentage falls
+        below a given threshold (`k_low`). The score is the z-score itself,
+        which can be used for ranking signals.
+
+        Args:
+            df: DataFrame with OHLC data.
+            window: The rolling window for z-score calculation.
+            k_low: The z-score threshold for generating a signal.
+
+        Returns:
+            DataFrame with added 'signal_gapz' and 'score_gapz' columns.
+        """
+        zscore_col = f"gap_pct_zscore_{window}"
+
+        # Chain feature calculations for a clean, readable pipeline
+        df_featured = df.pipe(FeatureEngine.add_gap_percentage).pipe(
+            FeatureEngine.add_rolling_zscore, column="gap_pct", window=window
+        )
+
+        # Generate signal and score
+        signal = (df_featured[zscore_col] < k_low).fillna(False)
+        score = df_featured[zscore_col]
+
+        return df_featured.assign(signal_gapz=signal, score_gapz=score)

@@ -103,3 +103,32 @@ class TestFeatureEngine:
         """Test rolling z-score with missing column."""
         with pytest.raises(ValueError, match="Column 'non_existent' not in DataFrame"):
             FeatureEngine.add_rolling_zscore(pd.DataFrame({'A': [1]}), 'non_existent', 3)
+
+    def test_add_gap_z_signal(self):
+        """Tests Gap-Z signal and score generation."""
+        # Create a predictable data series with a clear gap-down event
+        data = pd.DataFrame({
+            'Open':  [100, 100, 100, 90, 100, 100],
+            'Close': [100, 100, 100, 100, 100, 100],
+        })
+        # Expected gap_pct: [NaN, 0, 0, -0.1, 0, 0]
+
+        df = FeatureEngine.add_gap_z_signal(data, window=3, k_low=-1.0)
+
+        assert 'signal_gapz' in df.columns
+        assert 'score_gapz' in df.columns
+
+        # The z-score of the gap at index 3 should be low enough to trigger a signal.
+        # Window of gaps for z-score at index 3: [0, 0, -0.1]
+        # Mean = -0.0333..., Std = 0.0577...
+        # Z-score = (-0.1 - Mean) / Std = -1.1547...
+        assert df['signal_gapz'].iloc[3]
+        assert df['score_gapz'].iloc[3] < -1.0
+
+        # No other signals should be generated
+        assert not df['signal_gapz'].iloc[:3].any()
+        assert not df['signal_gapz'].iloc[4:].any()
+
+        # Where score is NaN (due to not enough data for window), signal must be False
+        assert pd.isna(df['score_gapz'].iloc[2])
+        assert not df['signal_gapz'].iloc[2]
