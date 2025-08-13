@@ -7,15 +7,16 @@ from pathlib import Path
 from typing import Dict, List, Literal
 
 import yaml
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, Field, ValidationError, root_validator, validator
 
 __all__ = ["load_config", "Config"]
 
 
 class RunConfig(BaseModel):
     name: str
+    t0: date
     seed: int = 42
-    output_dir: str = "runs"
+    output_dir: Path = Field(default_factory=lambda: Path("runs"))
 
 
 class DataConfig(BaseModel):
@@ -24,18 +25,18 @@ class DataConfig(BaseModel):
     start_date: date
     end_date: date
     refresh: bool = False
-    snapshot_dir: str = "data/snapshots"
+    snapshot_dir: Path = Field(default_factory=lambda: Path("data/snapshots"))
 
-    @validator('end_date')
-    def end_after_start(cls, v, values):
-        if 'start_date' in values and v <= values['start_date']:
-            raise ValueError('end_date must be after start_date')
+    @validator("end_date")
+    def end_after_start(cls, v: date, values: Dict) -> date:
+        if "start_date" in values and v <= values["start_date"]:
+            raise ValueError("end_date must be after start_date")
         return v
 
 
 class UniverseConfig(BaseModel):
     size: int = 10
-    min_turnover: float = 10000000.0
+    min_turnover: float = 1e7
     min_price: float = 10.0
     include_symbols: List[str] = []
     exclude_symbols: List[str] = []
@@ -62,7 +63,7 @@ class ExecutionConfig(BaseModel):
     slippage_model: Dict[str, float] = {
         "gap_2pct": 5.0,
         "gap_5pct": 10.0,
-        "gap_high": 20.0
+        "gap_high": 20.0,
     }
 
 
@@ -90,35 +91,29 @@ class Config(BaseModel):
     portfolio: PortfolioConfig
     reporting: ReportingConfig
 
+    @root_validator
+    def t0_is_within_data_range(cls, values: Dict) -> Dict:
+        run_cfg, data_cfg = values.get("run"), values.get("data")
+        if run_cfg and data_cfg:
+            if run_cfg.t0 <= data_cfg.start_date:
+                raise ValueError("run.t0 must be after data.start_date")
+            if run_cfg.t0 >= data_cfg.end_date:
+                raise ValueError("run.t0 must be before data.end_date")
+        return values
 
-def load_config(config_path: str) -> "Config":  # impure
-    """
-    Load and validate YAML configuration file.
 
-    Args:
-        config_path: Path to YAML configuration file.
-
-    Returns:
-        Validated Config object.
-
-    Raises:
-        FileNotFoundError: If config file doesn't exist.
-        ValueError: If YAML parsing or validation fails.
-    """
-    config_file = Path(config_path)
-    if not config_file.is_file():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-
+# impure
+def load_config(config_path: Path) -> Config:
+    """Load and validate YAML configuration file."""
     try:
-        with config_file.open("r", encoding="utf-8") as f:
+        with config_path.open("r", encoding="utf-8") as f:
             raw_config = yaml.safe_load(f)
+        if not isinstance(raw_config, dict):
+            raise ValueError("Configuration must be a YAML object.")
+        return Config(**raw_config)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Configuration file not found: {config_path}") from e
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e
-
-    if not isinstance(raw_config, dict):
-        raise ValueError("Configuration must be a YAML object.")
-
-    try:
-        return Config(**raw_config)
     except ValidationError as e:
-        raise ValueError(f"Configuration validation failed: {e}") from e
+        raise ValueError(f"Configuration validation failed:\n{e}") from e

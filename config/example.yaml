@@ -3,6 +3,7 @@
 
 run:
   name: "gap_z_example"
+  t0: "2012-01-01"
   seed: 42
   output_dir: "runs"
 
@@ -28,10 +29,9 @@ detector:
   min_hit_rate: 0.4         # Minimum hit rate for parameter selection
 
 walk_forward:
-  in_sample_years: 3        # In-sample period for parameter fitting
-  out_sample_years: 1       # Out-of-sample testing period
+  is_years: 3               # In-sample period for parameter fitting
+  oos_years: 1              # Out-of-sample testing period
   holdout_years: 2          # Final holdout period (never touched)
-  calendar_align: true      # Align splits to trading calendar
 
 execution:
   circuit_guard_pct: 0.10   # ±10% circuit guard from previous close

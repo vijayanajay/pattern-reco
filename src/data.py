@@ -10,15 +10,30 @@ from rich.console import Console
 
 from src.config import Config
 
-__all__ = ["fetch_and_snapshot", "load_snapshots"]
+__all__ = ["fetch_and_snapshot", "load_snapshots", "discover_symbols"]
 
 
-def fetch_and_snapshot(symbols: List[str], config: Config, console: Console) -> None:  # impure
+def _get_snapshot_dir(config: Config) -> Path:
+    """Constructs the snapshot directory path from config."""
+    return config.data.snapshot_dir / f"{config.data.source}_{config.data.interval}"
+
+
+def discover_symbols(config: Config) -> List[str]:
+    """Discovers all available symbols by scanning the snapshot directory."""
+    snapshot_dir = _get_snapshot_dir(config)
+    if not snapshot_dir.exists():
+        return []
+
+    return [p.stem for p in snapshot_dir.glob("*.parquet")]
+
+
+# impure
+def fetch_and_snapshot(symbols: List[str], config: Config, console: Console) -> None:
     """
     Fetch data from yfinance and save to parquet snapshots.
     Logs warnings for symbols that fail to download.
     """
-    snapshot_dir = Path(config.data.snapshot_dir) / f"{config.data.source}_{config.data.interval}"
+    snapshot_dir = _get_snapshot_dir(config)
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     console.log(f"Using snapshot directory: {snapshot_dir}")
 
@@ -52,17 +67,18 @@ def fetch_and_snapshot(symbols: List[str], config: Config, console: Console) -> 
         console.log(f"[yellow]Warning: Failed to fetch data for {len(failed_symbols)} symbols.[/yellow]")
 
 
-def load_snapshots(symbols: List[str], config: Config, console: Console) -> Dict[str, pd.DataFrame]:  # impure
+# impure
+def load_snapshots(symbols: List[str], config: Config, console: Console) -> Dict[str, pd.DataFrame]:
     """
     Load existing data snapshots for a list of symbols.
     """
-    snapshot_dir = Path(config.data.snapshot_dir) / f"{config.data.source}_{config.data.interval}"
-    console.log(f"Loading snapshots from: {snapshot_dir}")
+    snapshot_dir = _get_snapshot_dir(config)
+    console.log(f"Loading {len(symbols)} snapshots from: {snapshot_dir}")
 
     if not snapshot_dir.exists():
         raise FileNotFoundError(
             f"Snapshot directory not found: {snapshot_dir}. "
-            "Run with refresh=True to fetch data."
+            "Run 'refresh-data' to fetch data."
         )
 
     loaded_data = {}
@@ -70,7 +86,7 @@ def load_snapshots(symbols: List[str], config: Config, console: Console) -> Dict
         parquet_path = snapshot_dir / f"{symbol}.parquet"
         if not parquet_path.exists():
             # This is not an error, just means we don't have data for this symbol.
-            # The caller can decide how to handle it.
+            # The universe selection logic will handle it.
             continue
         loaded_data[symbol] = pd.read_parquet(parquet_path)
 

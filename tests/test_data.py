@@ -25,13 +25,13 @@ def temp_dir() -> Generator[Path, None, None]:
 def test_config(temp_dir: Path) -> Config:
     """Pytest fixture to create a valid Config object for testing."""
     config_dict = {
-        "run": {"name": "test_run"},
+        "run": {"name": "test_run", "t0": "2023-01-15"},
         "data": {
             "start_date": "2023-01-01",
             "end_date": "2023-01-31",
             "source": "yfinance_test",
             "interval": "1d",
-            "snapshot_dir": str(temp_dir),
+            "snapshot_dir": temp_dir,
         },
         "universe": {"include_symbols": ["TEST.NS", "INVALID.NS", "MISSING.NS"]},
         "detector": {}, "walk_forward": {}, "execution": {}, "portfolio": {}, "reporting": {},
@@ -107,7 +107,7 @@ def test_load_snapshots_missing_directory_raises_error(
     test_config: Config, console: Console
 ) -> None:
     """Test that loading from a non-existent snapshot directory raises an error."""
-    test_config.data.snapshot_dir = str(Path(test_config.data.snapshot_dir) / "non_existent")
+    test_config.data.snapshot_dir = test_config.data.snapshot_dir / "non_existent"
     with pytest.raises(FileNotFoundError, match="Snapshot directory not found"):
         load_snapshots(["TEST.NS"], test_config, console)
 
