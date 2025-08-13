@@ -51,10 +51,9 @@ class DetectorConfig(BaseModel):
 
 
 class WalkForwardConfig(BaseModel):
-    in_sample_years: int = 3
-    out_sample_years: int = 1
+    is_years: int = 3
+    oos_years: int = 1
     holdout_years: int = 2
-    calendar_align: bool = True
 
 
 class ExecutionConfig(BaseModel):
