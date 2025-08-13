@@ -58,10 +58,9 @@ def fetch_and_snapshot(symbols: List[str], config: Config, console: Console) -> 
             parquet_path = snapshot_dir / f"{symbol}.parquet"
             data.to_parquet(parquet_path, engine="pyarrow")
 
-        except Exception as e:
+        except (IOError, ConnectionError, ValueError) as e:
             console.log(f"[red]Warning: Failed to fetch data for {symbol}: {e}[/red]")
             failed_symbols.append(symbol)
-            continue
 
     if failed_symbols:
         console.log(f"[yellow]Warning: Failed to fetch data for {len(failed_symbols)} symbols.[/yellow]")

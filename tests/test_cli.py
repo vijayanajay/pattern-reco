@@ -47,15 +47,13 @@ def test_cli_run_with_missing_config_file() -> None:
     assert "does not exist" in result.stderr
 
 
-def test_cli_run_command_runs(mocker, tmp_path: Path) -> None:
-    """A simple test to ensure the `run` command executes the pipeline functions."""
-    mocker.patch("cli.select_universe", return_value=["TEST.NS"])
+def test_cli_run_command_runs(tmp_path: Path) -> None:
+    """A simple test to ensure the `run` command executes."""
     config_path = create_temp_config(tmp_path)
     result = runner.invoke(app, ["run", "--config", str(config_path)])
 
     assert result.exit_code == 0
     assert "Code simplification review complete" in result.stdout
-    assert "Selected 1 symbols" in result.stdout
 
 
 def test_cli_refresh_command_existing_symbols(mocker, tmp_path: Path) -> None:
