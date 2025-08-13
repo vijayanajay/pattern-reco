@@ -32,10 +32,6 @@ def run(
     config = _load_config_or_exit(config_path)
     console.print(f"Loaded configuration for run: [bold]{config.run.name}[/bold]")
 
-    console.print("Selecting universe...")
-    universe = select_universe(config, console)
-    console.print(f"Selected {len(universe)} symbols.")
-
     console.print("[yellow]Warning: The main pipeline logic is not implemented.[/yellow]")
     console.print("[green]Code simplification review complete.[/green]")
 

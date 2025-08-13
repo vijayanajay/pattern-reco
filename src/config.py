@@ -72,7 +72,6 @@ class PortfolioConfig(BaseModel):
     position_size: float = 100000.0
     equal_weight: bool = True
     reentry_lockout: bool = True
-    max_hold_days: int = 22
 
 
 class ReportingConfig(BaseModel):
