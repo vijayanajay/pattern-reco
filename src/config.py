@@ -4,10 +4,10 @@ Configuration loading and validation for the anomaly detection system.
 
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict, List, Literal
+from typing import Dict, List, Literal
 
 import yaml
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ValidationError, validator
 
 __all__ = ["load_config", "Config"]
 
@@ -37,6 +37,7 @@ class UniverseConfig(BaseModel):
     size: int = 10
     min_turnover: float = 10000000.0
     min_price: float = 10.0
+    include_symbols: List[str] = []
     exclude_symbols: List[str] = []
     lookback_years: int = 2
 
@@ -91,37 +92,34 @@ class Config(BaseModel):
     reporting: ReportingConfig
 
 
-def load_config(config_path: str) -> Dict[str, Any]:  # impure
+def load_config(config_path: str) -> "Config":  # impure
     """
     Load and validate YAML configuration file.
-    
+
     Args:
-        config_path: Path to YAML configuration file
-        
+        config_path: Path to YAML configuration file.
+
     Returns:
-        Validated configuration dictionary
-        
+        Validated Config object.
+
     Raises:
-        FileNotFoundError: If config file doesn't exist
-        ValueError: If YAML parsing fails or validation fails
+        FileNotFoundError: If config file doesn't exist.
+        ValueError: If YAML parsing or validation fails.
     """
     config_file = Path(config_path)
-
-    if not config_file.exists():
+    if not config_file.is_file():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     try:
-        with config_file.open('r', encoding='utf-8') as f:
+        with config_file.open("r", encoding="utf-8") as f:
             raw_config = yaml.safe_load(f)
     except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML syntax in {config_path}: {e}")
+        raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e
 
     if not isinstance(raw_config, dict):
-        raise ValueError(f"Configuration must be a YAML object, got {type(raw_config)}")
+        raise ValueError("Configuration must be a YAML object.")
 
-    # Validate with Pydantic
     try:
-        config_model = Config(**raw_config)
-        return config_model.dict()
-    except Exception as e:
+        return Config(**raw_config)
+    except ValidationError as e:
         raise ValueError(f"Configuration validation failed: {e}") from e
