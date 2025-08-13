@@ -1,6 +1,5 @@
 """
 Configuration loading and validation for the anomaly detection system.
-Single YAML file controls all aspects of the pipeline.
 """
 
 from datetime import date
@@ -10,7 +9,7 @@ from typing import Any, Dict, List, Literal
 import yaml
 from pydantic import BaseModel, validator
 
-__all__ = ["load_config", "create_example_config"]
+__all__ = ["load_config", "Config"]
 
 
 class RunConfig(BaseModel):
@@ -25,7 +24,8 @@ class DataConfig(BaseModel):
     start_date: date
     end_date: date
     refresh: bool = False
-    
+    snapshot_dir: str = "data/snapshots"
+
     @validator('end_date')
     def end_after_start(cls, v, values):
         if 'start_date' in values and v <= values['start_date']:
@@ -71,6 +71,7 @@ class PortfolioConfig(BaseModel):
     position_size: float = 100000.0
     equal_weight: bool = True
     reentry_lockout: bool = True
+    max_hold_days: int = 22
 
 
 class ReportingConfig(BaseModel):
@@ -105,80 +106,22 @@ def load_config(config_path: str) -> Dict[str, Any]:  # impure
         ValueError: If YAML parsing fails or validation fails
     """
     config_file = Path(config_path)
-    
+
     if not config_file.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    
+
     try:
         with config_file.open('r', encoding='utf-8') as f:
             raw_config = yaml.safe_load(f)
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in {config_path}: {e}")
-    
+
     if not isinstance(raw_config, dict):
         raise ValueError(f"Configuration must be a YAML object, got {type(raw_config)}")
-    
+
     # Validate with Pydantic
     try:
         config_model = Config(**raw_config)
         return config_model.dict()
     except Exception as e:
         raise ValueError(f"Configuration validation failed: {e}") from e
-
-
-def create_example_config() -> Dict[str, Any]:
-    """Create an example configuration dictionary."""
-    return {
-        "run": {
-            "name": "gap_z_example",
-            "seed": 42,
-            "output_dir": "runs"
-        },
-        "data": {
-            "source": "yfinance",
-            "interval": "1d",
-            "start_date": "2010-01-01",
-            "end_date": "2025-01-01",
-            "refresh": False
-        },
-        "universe": {
-            "size": 10,
-            "min_turnover": 10000000.0,
-            "min_price": 10.0,
-            "exclude_symbols": [],
-            "lookback_years": 2
-        },
-        "detector": {
-            "name": "gap_z",
-            "window_range": [20, 60],
-            "k_low_range": [-1.0, -2.0],
-            "max_hold": 22,
-            "min_hit_rate": 0.4
-        },
-        "walk_forward": {
-            "in_sample_years": 3,
-            "out_sample_years": 1,
-            "holdout_years": 2,
-            "calendar_align": True
-        },
-        "execution": {
-            "circuit_guard_pct": 0.10,
-            "fees_bps": 10.0,
-            "slippage_model": {
-                "gap_2pct": 5.0,
-                "gap_5pct": 10.0,
-                "gap_high": 20.0
-            }
-        },
-        "portfolio": {
-            "max_concurrent": 5,
-            "position_size": 100000.0,
-            "equal_weight": True,
-            "reentry_lockout": True
-        },
-        "reporting": {
-            "generate_plots": False,
-            "output_formats": ["json", "markdown", "csv"],
-            "include_unfilled": True
-        }
-    }
