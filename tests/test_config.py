@@ -9,7 +9,7 @@ import yaml
 
 import pytest
 
-from src.config import load_config
+from src.config import Config, load_config
 
 # A minimal, valid config for testing
 MINIMAL_CONFIG = {
@@ -35,16 +35,16 @@ def temp_config_file() -> Generator[Path, None, None]:
     Path(config_path).unlink()
 
 def test_load_valid_config(temp_config_file: Path) -> None:
-    """Test loading a valid configuration file returns a dict."""
+    """Test loading a valid configuration file returns a Config object."""
     config = load_config(str(temp_config_file))
-    assert isinstance(config, dict)
-    assert config["run"]["name"] == "test"
+    assert isinstance(config, Config)
+    assert config.run.name == "test"
 
 def test_load_example_config_file() -> None:
     """Test that the main example config file is valid."""
     config = load_config("config/example.yaml")
-    assert isinstance(config, dict)
-    assert config["run"]["name"] == "gap_z_example"
+    assert isinstance(config, Config)
+    assert config.run.name == "gap_z_example"
 
 def test_missing_config_file() -> None:
     """Test error handling for missing config file."""

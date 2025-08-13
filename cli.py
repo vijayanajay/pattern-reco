@@ -1,115 +1,64 @@
-#!/usr/bin/env python3
-"""
-CLI entry point for the stock pattern detection system.
-"""
-import argparse
-import logging
 import sys
 from datetime import date
+from pathlib import Path
 
-from rich.logging import RichHandler
+import typer
+from rich.console import Console
 
-# Set up logging
-logging.basicConfig(
-    level="INFO",
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True)],
-)
-log = logging.getLogger("main")
+from src.config import Config, load_config
+from src.data import fetch_and_snapshot, load_snapshots
+from src.universe import get_nse_symbols, select_universe
 
-# Import refactored components
-from src.adapters.yfinance_api import fetch_and_snapshot, load_snapshots
-from src.config import load_config
-from src.core.universe import get_nse_symbols, select_universe
+app = typer.Typer(pretty_exceptions_show_locals=False)
+console = Console()
 
 
-def setup_parser() -> argparse.ArgumentParser:
-    """Set up the argument parser."""
-    parser = argparse.ArgumentParser(
-        description="A stock pattern detection system.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-
-    run_parser = subparsers.add_parser("run", help="Execute the backtest pipeline")
-    run_parser.add_argument(
-        "--config", required=True, type=str, help="Path to YAML configuration file"
-    )
-
-    refresh_parser = subparsers.add_parser(
-        "refresh-data", help="Refresh data snapshots"
-    )
-    refresh_parser.add_argument(
-        "--config", required=True, type=str, help="Path to YAML configuration file"
-    )
-    return parser
-
-
-def main() -> None:
-    """Main CLI entry point."""
-    parser = setup_parser()
-    args = parser.parse_args()
-
-    if not args.command:
-        parser.print_help()
-        sys.exit(1)
-
+def _load_config_or_exit(config_path: Path) -> Config:
+    """Helper to load config and exit on failure."""
     try:
-        log.info(f"Loading configuration from: {args.config}")
-        config = load_config(args.config)
-
-        if args.command == "refresh-data":
-            handle_refresh_data(config)
-        elif args.command == "run":
-            handle_run_pipeline(config)
-
-    except (FileNotFoundError, ValueError) as e:
-        log.error(f"Error: {e}", extra={"markup": True})
-        sys.exit(1)
-    except Exception:
-        log.exception("An unexpected error occurred:")
-        sys.exit(1)
+        return load_config(str(config_path))
+    except (ValueError, FileNotFoundError) as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(code=1) from e
 
 
-from typing import Any, Dict
+@app.command()
+def run(
+    config_path: Path = typer.Option(
+        ..., "--config", "-c", help="Path to YAML configuration file.", exists=True
+    )
+):
+    """Execute the backtest pipeline."""
+    config = _load_config_or_exit(config_path)
+    console.print(f"Loaded configuration for run: [bold]{config.run.name}[/bold]")
 
-def handle_refresh_data(config: Dict[str, Any]) -> None:
-    """Handle the 'refresh-data' command."""
-    log.info("Starting data refresh...")
-    symbols = get_nse_symbols()
-    fetch_and_snapshot(symbols, config)
-    log.info("[green]Data refresh completed successfully.[/green]", extra={"markup": True})
+    console.print("Loading data snapshots...")
+    all_symbols = get_nse_symbols(config, console)
+    all_data = load_snapshots(all_symbols, config, console)
+
+    console.print("Selecting universe...")
+    # Using a placeholder t0, as in the original code. This will be fixed.
+    t0 = date(2020, 1, 1)
+    universe = select_universe(all_data, config, t0, console)
+    console.print(f"Selected {len(universe)} symbols.")
+
+    console.print("[yellow]Warning: The main pipeline logic is not implemented.[/yellow]")
+    console.print("[green]Code simplification review complete.[/green]")
 
 
-def handle_run_pipeline(config: Dict[str, Any]) -> None:
-    """Handle the 'run' command."""
-    log.info("Starting backtest pipeline...")
-
-    # 1. Load all available data
-    log.info("Loading data snapshots...")
-    all_symbols = get_nse_symbols()
-    all_data = load_snapshots(all_symbols, config)
-
-    # 2. Select universe at t0 (for now, t0 is hardcoded, should be from config)
-    # The PRD/design implies a single t0 for the whole backtest.
-    t0 = date(2020, 1, 1) # Placeholder
-    log.info(f"Selecting universe at t0 = {t0}...")
-    universe = select_universe(all_data, config.get("universe", {}), t0)
-
-    log.info(f"Selected universe: {universe}")
-
-    # TODO: Implement walk-forward backtesting logic here.
-    # This involves:
-    # - Creating walk-forward splits (IS/OOS).
-    # - For each split and each stock in the universe:
-    #   - Fit detector on IS data.
-    #   - Run backtest on OOS data.
-    #   - Collect and aggregate results.
-
-    log.warning("Pipeline execution logic is not fully implemented yet.")
-    log.info("[green]Pipeline run finished (placeholder).[/green]", extra={"markup": True})
+@app.command(name="refresh-data")
+def refresh_data(
+    config_path: Path = typer.Option(
+        ..., "--config", "-c", help="Path to YAML configuration file.", exists=True
+    )
+):
+    """Refresh data snapshots from the source."""
+    config = _load_config_or_exit(config_path)
+    console.print("Starting data refresh...")
+    symbols = get_nse_symbols(config, console)
+    fetch_and_snapshot(symbols, config, console)
+    console.print("[green]Data refresh completed successfully.[/green]")
 
 
 if __name__ == "__main__":
-    main()
+    app()
