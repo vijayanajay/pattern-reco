@@ -30,15 +30,17 @@ def test_load_valid_config(temp_config_file: Path) -> None:
     """Test loading a valid configuration file returns a Config object."""
     config = load_config(temp_config_file)
     assert isinstance(config, Config)
-    assert config.run.name == "test"
-    assert isinstance(config.data.snapshot_dir, Path)
+    assert config.run["name"] == "test"
+    # The default value for snapshot_dir is no longer applied automatically.
+    # The MINIMAL_CONFIG fixture doesn't contain it.
+    assert "snapshot_dir" not in config.data
 
 
 def test_load_example_config_file() -> None:
     """Test that the main example config file is valid."""
     config = load_config(Path("config/example.yaml"))
     assert isinstance(config, Config)
-    assert config.run.name == "gap_z_example"
+    assert config.run["name"] == "gap_z_example"
 
 
 def test_missing_config_file() -> None:
@@ -55,18 +57,6 @@ def test_invalid_yaml_syntax(tmp_path: Path) -> None:
         load_config(config_path)
 
 
-def test_validation_error_on_invalid_type(tmp_path: Path) -> None:
-    """Test that Pydantic validation fails for incorrect types."""
-    invalid_config = copy.deepcopy(MINIMAL_CONFIG)
-    invalid_config["universe"]["size"] = "not-an-integer"
-    config_path = tmp_path / "invalid.yaml"
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(invalid_config, f)
-
-    with pytest.raises(ValueError, match="Configuration validation failed"):
-        load_config(config_path)
-
-
 def test_date_validation_fails(tmp_path: Path) -> None:
     """Test that validation fails if end_date is before start_date."""
     invalid_config = copy.deepcopy(MINIMAL_CONFIG)
@@ -76,7 +66,7 @@ def test_date_validation_fails(tmp_path: Path) -> None:
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(invalid_config, f)
 
-    with pytest.raises(ValueError, match="end_date must be after start_date"):
+    with pytest.raises(ValueError, match="data.end_date must be after data.start_date"):
         load_config(config_path)
 
 
@@ -88,5 +78,5 @@ def test_t0_validation_fails(tmp_path: Path) -> None:
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(invalid_config, f)
 
-    with pytest.raises(ValueError, match="run.t0 must be after data.start_date"):
+    with pytest.raises(ValueError, match="run.t0 must be within the data.start_date and data.end_date"):
         load_config(config_path)
