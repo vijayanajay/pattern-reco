@@ -67,20 +67,23 @@ def test_fetch_and_snapshot_empty_data(mock_download: Mock, test_config: Config)
     assert not expected_path.exists()
 
 
-def test_load_snapshots_success(test_config: Config) -> None:
-    """Test successfully loading an existing snapshot."""
+def test_load_snapshots_success_and_turnover_calc(test_config: Config) -> None:
+    """Test loading a snapshot and that Turnover is correctly calculated."""
     snapshot_dir = Path(test_config.data["snapshot_dir"])
     interval = test_config.data["interval"]
     source = test_config.data["source"]
     snapshot_subdir = snapshot_dir / f"{source}_{interval}"
     snapshot_subdir.mkdir()
     fake_snapshot_path = snapshot_subdir / "TEST.NS.parquet"
-    pd.DataFrame({"Close": [100.0]}).to_parquet(fake_snapshot_path)
+    # Added 'Volume' for turnover calculation
+    pd.DataFrame({"Close": [100.0], "Volume": [1000.0]}).to_parquet(fake_snapshot_path)
 
     data = load_snapshots(["TEST.NS"], test_config)
     assert "TEST.NS" in data
-    assert isinstance(data["TEST.NS"], pd.DataFrame)
-    assert data["TEST.NS"]["Close"].iloc[0] == 100.0
+    df = data["TEST.NS"]
+    assert isinstance(df, pd.DataFrame)
+    assert "Turnover" in df.columns
+    assert df["Turnover"].iloc[0] == 100.0 * 1000.0
 
 
 def test_load_snapshots_missing_directory_raises_error(test_config: Config) -> None:

@@ -81,6 +81,15 @@ def load_snapshots(symbols: List[str], config: Config) -> Dict[str, pd.DataFrame
         parquet_path = snapshot_dir / f"{symbol}.parquet"
         if not parquet_path.is_file():
             raise FileNotFoundError(f"Missing snapshot for symbol: {symbol} at {parquet_path}")
-        loaded_data[symbol] = pd.read_parquet(parquet_path)
+
+        df = pd.read_parquet(parquet_path)
+        # As per rule [H-7], ensure required columns exist.
+        required_cols = {"Close", "Volume"}
+        if not required_cols.issubset(df.columns):
+            raise ValueError(f"Data for {symbol} is missing required columns: {required_cols - set(df.columns)}")
+
+        # Rule [H-3]: Prefer simple, direct calculations.
+        df["Turnover"] = df["Close"] * df["Volume"]
+        loaded_data[symbol] = df
 
     return loaded_data
