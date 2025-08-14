@@ -10,6 +10,7 @@ from rich.console import Console
 
 from src.config import Config
 from src.data import discover_symbols, load_snapshots
+from src.features import add_features
 
 __all__ = ["run_pipeline"]
 
@@ -33,7 +34,11 @@ def run_pipeline(config: Config, console: Console) -> None:
     all_data = load_snapshots(symbols, config)
     console.print(f"Successfully loaded data for {len(symbols)} symbols.")
 
-    # 2. Pipeline Execution (Placeholder)
+    # 2. Add features
+    console.print("Adding features...")
+    all_data = add_features(all_data)
+
+    # 3. Pipeline Execution (Placeholder)
     console.print("\n[bold yellow]Warning: Core pipeline logic is not implemented.[/bold yellow]")
     console.print("This script currently only loads data and does not perform a backtest.")
     console.print("Exiting.")

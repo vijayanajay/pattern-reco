@@ -1,15 +1,35 @@
 """
 Data fetching and snapshot management from yfinance.
 """
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pandas as pd
 import yfinance as yf
 
 from src.config import Config
 
 __all__ = ["fetch_and_snapshot", "load_snapshots", "discover_symbols"]
+
+
+def _get_run_metadata(config: Config) -> Dict[str, str]:
+    """Generates metadata for the data snapshot."""
+    try:
+        git_hash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"]
+        ).strip().decode()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        git_hash = "unknown"
+    return {
+        "fetch_utc": datetime.now(timezone.utc).isoformat(),
+        "yfinance_version": yf.__version__,
+        "git_hash": git_hash,
+        "run_name": config.run.name,
+    }
 
 
 def _get_snapshot_dir(config: Config) -> Path:
@@ -26,13 +46,13 @@ def discover_symbols(config: Config) -> List[str]:
     return sorted([p.stem for p in snapshot_dir.glob("*.parquet")])
 
 
-# impure
+# impure: Accesses network and filesystem.
 def fetch_and_snapshot(symbols: List[str], config: Config) -> List[str]:
     """
     Fetch data from yfinance and save to parquet snapshots.
     Returns a list of symbols that failed to download.
-    #impure: Accesses network and filesystem.
     """
+    #impure: Accesses network and filesystem.
     snapshot_dir = _get_snapshot_dir(config)
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
@@ -53,8 +73,14 @@ def fetch_and_snapshot(symbols: List[str], config: Config) -> List[str]:
             if data.empty:
                 raise ValueError(f"No data returned for symbol {symbol}")
 
-            parquet_path = snapshot_dir / f"{symbol}.parquet"
-            data.to_parquet(parquet_path, engine="pyarrow")
+            # Store with pyarrow to attach metadata
+            table = pa.Table.from_pandas(data)
+            metadata = _get_run_metadata(config)
+            table = table.replace_schema_metadata({
+                **table.schema.metadata,
+                **{k.encode(): str(v).encode() for k, v in metadata.items()}
+            })
+            pq.write_table(table, snapshot_dir / f"{symbol}.parquet")
 
         except (IOError, ConnectionError, ValueError):
             # Instead of logging, we collect failures for the caller to handle.
@@ -86,8 +112,6 @@ def load_snapshots(symbols: List[str], config: Config) -> Dict[str, pd.DataFrame
         if not required_cols.issubset(df.columns):
             raise ValueError(f"Data for {symbol} is missing required columns: {required_cols - set(df.columns)}")
 
-        # Rule [H-3]: Prefer simple, direct calculations.
-        df["Turnover"] = df["Close"] * df["Volume"]
         loaded_data[symbol] = df
 
     return loaded_data
