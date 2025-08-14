@@ -53,7 +53,7 @@ def refresh_data(
     symbols_to_refresh = discover_symbols(config)
     if not symbols_to_refresh:
         # Fallback to the include_symbols list if no snapshots exist
-        symbols_to_refresh = config.universe.get("include_symbols", [])
+        symbols_to_refresh = config.universe.include_symbols
         if symbols_to_refresh:
             console.print("No existing snapshots found. Performing initial download for symbols in config.")
         else:

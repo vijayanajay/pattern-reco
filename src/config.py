@@ -1,102 +1,154 @@
 """
-Configuration loading and validation.
+Configuration loading and validation using Pydantic.
 
-Simplifies the original design by using a single Pydantic model
-and leveraging dictionaries for nested configuration, reducing boilerplate.
+This version uses nested, strongly-typed Pydantic models instead of
+generic dictionaries. This improves type safety, enables editor autocompletion,
+and delegates validation to Pydantic, making the code cleaner and more robust.
 """
 
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict
+from typing import List, Literal
 
 import yaml
-from pydantic import BaseModel, ValidationError, root_validator
+from pydantic import BaseModel, Field, ValidationError, root_validator
 
 __all__ = ["load_config", "Config"]
 
 
+# §1. Nested Configuration Models
+# --------------------------------------------------------------------------------------
+# Each class represents a section of the YAML configuration file, providing
+# validation, default values, and type hints.
+
+
+class RunConfig(BaseModel):
+    """Configuration for a single run."""
+
+    name: str
+    t0: date
+    seed: int = 42
+    output_dir: Path = Path("runs")
+
+
+class DataConfig(BaseModel):
+    """Configuration for data source and processing."""
+
+    source: str = "yfinance"
+    interval: Literal["1d", "1wk", "1mo"] = "1d"
+    start_date: date
+    end_date: date
+    snapshot_dir: Path
+    refresh: bool = False
+
+
+class UniverseConfig(BaseModel):
+    """Configuration for stock universe selection."""
+
+    include_symbols: List[str] = Field(default_factory=list)
+    exclude_symbols: List[str] = Field(default_factory=list)
+    size: int = 10
+    min_turnover: float = 10_000_000.0
+    min_price: float = 10.0
+    lookback_years: int = 2
+
+
+class DetectorConfig(BaseModel):
+    """Configuration for the signal detector."""
+
+    name: str = "gap_z"
+    window_range: List[int] = Field(default_factory=lambda: [20, 60])
+    k_low_range: List[float] = Field(default_factory=lambda: [-1.0, -2.0])
+    max_hold: int = 22
+    min_hit_rate: float = 0.4
+
+
+class WalkForwardConfig(BaseModel):
+    """Configuration for walk-forward validation."""
+
+    is_years: int = 3
+    oos_years: int = 1
+    holdout_years: int = 2
+
+
+class SlippageConfig(BaseModel):
+    """Configuration for the slippage model."""
+
+    gap_2pct: float = 5.0
+    gap_5pct: float = 10.0
+    gap_high: float = 20.0
+
+
+class ExecutionConfig(BaseModel):
+    """Configuration for trade execution simulation."""
+
+    circuit_guard_pct: float = 0.10
+    fees_bps: float = 10.0
+    slippage_model: SlippageConfig = Field(default_factory=SlippageConfig)
+
+
+class PortfolioConfig(BaseModel):
+    """Configuration for portfolio management."""
+
+    max_concurrent: int = 5
+    position_size: float = 100_000.0
+    equal_weight: bool = True
+    reentry_lockout: bool = True
+
+
+class ReportingConfig(BaseModel):
+    """Configuration for output reporting."""
+
+    generate_plots: bool = False
+    output_formats: List[Literal["json", "markdown", "csv"]] = Field(
+        default_factory=lambda: ["json", "markdown", "csv"]
+    )
+    include_unfilled: bool = True
+
+
+# §2. Top-Level Configuration
+# --------------------------------------------------------------------------------------
+
+
 class Config(BaseModel):
-    """
-    A single Pydantic model for the entire configuration.
-    Nested structures are handled as dictionaries, providing flexibility.
-    """
+    """The root configuration model, composing all nested sections."""
 
-    run: Dict[str, Any]
-    data: Dict[str, Any]
-    universe: Dict[str, Any]
-    detector: Dict[str, Any]
-    walk_forward: Dict[str, Any]
-    execution: Dict[str, Any]
-    portfolio: Dict[str, Any]
-    reporting: Dict[str, Any]
-
-    class Config:
-        # Allow Pydantic to automatically convert date strings.
-        json_encoders = {date: lambda v: v.strftime("%Y-%m-%d")}
-
-    @root_validator(pre=True)
-    def check_required_sections(cls, values: Dict) -> Dict:
-        """Check for presence of all top-level configuration sections."""
-        required = {
-            "run",
-            "data",
-            "universe",
-            "detector",
-            "walk_forward",
-            "execution",
-            "portfolio",
-            "reporting",
-        }
-        missing = required - set(values.keys())
-        if missing:
-            raise ValueError(f"Missing required config sections: {', '.join(missing)}")
-        return values
+    run: RunConfig
+    data: DataConfig
+    universe: UniverseConfig = Field(default_factory=UniverseConfig)
+    detector: DetectorConfig = Field(default_factory=DetectorConfig)
+    walk_forward: WalkForwardConfig = Field(default_factory=WalkForwardConfig)
+    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
+    portfolio: PortfolioConfig = Field(default_factory=PortfolioConfig)
+    reporting: ReportingConfig = Field(default_factory=ReportingConfig)
 
     @root_validator
-    def validate_and_parse_dates(cls, values: Dict) -> Dict:
-        """
-        Validate date logic and parse date strings, since they are in a generic Dict.
-        Pydantic v1 doesn't automatically parse types inside a `Dict[str, Any]`.
-        """
-        from datetime import datetime
+    def validate_dates(cls, values):
+        """Ensures logical consistency between different date fields."""
+        run_cfg = values.get("run")
+        data_cfg = values.get("data")
 
-        run_cfg = values.get("run", {})
-        data_cfg = values.get("data", {})
-
-        try:
-            # Manually parse dates from strings
-            run_t0_str = run_cfg.get("t0")
-            data_start_str = data_cfg.get("start_date")
-            data_end_str = data_cfg.get("end_date")
-
-            if not all([run_t0_str, data_start_str, data_end_str]):
-                raise ValueError("Missing required date fields: run.t0, data.start_date, data.end_date")
-
-            run_t0 = datetime.strptime(str(run_t0_str), "%Y-%m-%d").date()
-            data_start = datetime.strptime(str(data_start_str), "%Y-%m-%d").date()
-            data_end = datetime.strptime(str(data_end_str), "%Y-%m-%d").date()
-
-            # Store the parsed `date` objects back into the config dict
-            values["run"]["t0"] = run_t0
-            values["data"]["start_date"] = data_start
-            values["data"]["end_date"] = data_end
-
-        except (ValueError, TypeError) as e:
-            # Catches missing keys from .get() and strptime format errors
-            raise ValueError(f"Invalid or missing date configuration: {e}") from e
-
-        if data_end <= data_start:
-            raise ValueError("data.end_date must be after data.start_date")
-        if not (data_start < run_t0 < data_end):
-            raise ValueError("run.t0 must be within the data.start_date and data.end_date")
-
+        # This check is only performed if both configs are present.
+        if run_cfg and data_cfg:
+            if data_cfg.end_date <= data_cfg.start_date:
+                raise ValueError("data.end_date must be after data.start_date")
+            if not (data_cfg.start_date < run_cfg.t0 < data_cfg.end_date):
+                raise ValueError("run.t0 must be within the data start and end dates")
         return values
+
+    class Config:
+        # Pydantic v1 model configuration
+        allow_population_by_field_name = True
+
+
+# §3. Loading Function
+# --------------------------------------------------------------------------------------
 
 
 # impure
 def load_config(config_path: Path) -> Config:
     """
-    Load and validate YAML configuration file.
+    Loads and validates a YAML configuration file into a Config object.
     #impure: Reads from the filesystem.
     """
     if not config_path.is_file():
@@ -111,5 +163,5 @@ def load_config(config_path: Path) -> Config:
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e
     except (ValidationError, ValueError, TypeError) as e:
-        # Re-raise Pydantic's error to provide more specific feedback.
+        # Re-raise to provide more specific feedback on validation failure.
         raise ValueError(f"Configuration validation failed: {e}") from e

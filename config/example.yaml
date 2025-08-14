@@ -12,6 +12,7 @@ data:
   interval: "1d"
   start_date: "2010-01-01"
   end_date: "2025-01-01"
+  snapshot_dir: "data/snapshots"
   refresh: false
 
 universe:

@@ -14,9 +14,8 @@ __all__ = ["fetch_and_snapshot", "load_snapshots", "discover_symbols"]
 
 def _get_snapshot_dir(config: Config) -> Path:
     """Constructs the snapshot directory path from config."""
-    # Using dictionary access now
-    data_cfg = config.data
-    return Path(data_cfg["snapshot_dir"]) / f"{data_cfg['source']}_{data_cfg['interval']}"
+    # Using attribute access with the new Pydantic models
+    return config.data.snapshot_dir / f"{config.data.source}_{config.data.interval}"
 
 
 def discover_symbols(config: Config) -> List[str]:
@@ -36,7 +35,6 @@ def fetch_and_snapshot(symbols: List[str], config: Config) -> List[str]:
     """
     snapshot_dir = _get_snapshot_dir(config)
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    data_cfg = config.data
 
     failed_symbols = []
     for symbol in symbols:
@@ -44,9 +42,9 @@ def fetch_and_snapshot(symbols: List[str], config: Config) -> List[str]:
             # Use yf.download for robustness and cleaner logs.
             data = yf.download(
                 tickers=symbol,
-                start=data_cfg["start_date"],
-                end=data_cfg["end_date"],
-                interval=data_cfg["interval"],
+                start=config.data.start_date,
+                end=config.data.end_date,
+                interval=config.data.interval,
                 auto_adjust=True,
                 prepost=False,
                 actions=False,
