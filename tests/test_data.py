@@ -63,22 +63,23 @@ def test_fetch_and_snapshot_empty_data(mock_download: Mock, test_config: Config)
     assert not expected_path.exists()
 
 
-def test_load_snapshots_success_and_turnover_calc(test_config: Config) -> None:
-    """Test loading a snapshot and that Turnover is correctly calculated."""
+def test_load_snapshots_success(test_config: Config) -> None:
+    """Test that a snapshot can be loaded successfully."""
     snapshot_dir = test_config.data.snapshot_dir
     interval = test_config.data.interval
     source = test_config.data.source
     snapshot_subdir = snapshot_dir / f"{source}_{interval}"
     snapshot_subdir.mkdir()
     fake_snapshot_path = snapshot_subdir / "TEST.NS.parquet"
-    pd.DataFrame({"Close": [100.0], "Volume": [1000.0], "Open": [99.0], "High": [101.0], "Low": [98.0]}).to_parquet(fake_snapshot_path)
+    # The actual data content doesn't matter, just that it's a valid Parquet file.
+    pd.DataFrame({"Close": [100.0], "Volume": [1000.0]}).to_parquet(fake_snapshot_path)
 
     data = load_snapshots(["TEST.NS"], test_config)
     assert "TEST.NS" in data
     df = data["TEST.NS"]
     assert isinstance(df, pd.DataFrame)
-    assert "Turnover" in df.columns
-    assert df["Turnover"].iloc[0] == 100.0 * 1000.0
+    assert "Close" in df.columns
+    assert "Turnover" not in df.columns
 
 
 def test_load_snapshots_missing_directory_raises_error(test_config: Config) -> None:
