@@ -8,7 +8,7 @@ from rich.console import Console
 
 from src.config import Config, load_config
 from src.data import discover_symbols, fetch_and_snapshot
-from src.pipeline import run_pipeline
+from src.pipeline import run_backtest
 
 # Follows rule [H-18], console is created once and passed down.
 # Log to stderr to separate from potential data output to stdout.
@@ -33,8 +33,7 @@ def run(
 ):
     """Execute the backtest pipeline based on the given configuration."""
     config = _load_config_or_exit(config_path)
-    # Call the new unified pipeline
-    run_pipeline(config, console)
+    run_backtest(config, console)
     console.print("[bold green]Run command finished.[/bold green]")
 
 

@@ -1,44 +1,83 @@
 """
 The core backtesting pipeline.
-
-This module provides a single, unified entry point for running a backtest.
-As of now, it only performs data loading and validation. The core
-walk-forward, signal generation, and execution logic is not yet implemented.
 """
+import subprocess
+from datetime import date
+from pathlib import Path
 
+import pandas as pd
 from rich.console import Console
 
 from src.config import Config
-from src.data import discover_symbols, load_snapshots
-from src.features import add_features
+from src.reporting import (
+    generate_run_manifest,
+    generate_summary_json,
+    generate_summary_markdown,
+    generate_trade_ledger_csv,
+)
+from src.types import RunContext, RunProposals, RunResult, Trade
 
-__all__ = ["run_pipeline"]
+__all__ = ["run_backtest"]
+
+
+def _get_git_hash() -> str:
+    """Returns the current git hash, or 'unknown' if not a git repo."""
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def _generate_mock_result(config: Config) -> RunResult:
+    """
+    Creates a mock RunResult for demonstration purposes.
+    In a real scenario, this would be the output of a proper backtest.
+    """
+    trades = [
+        Trade(
+            symbol="RELIANCE.NS",
+            entry_date=date(2023, 1, 5),
+            exit_date=date(2023, 1, 10),
+            entry_price=2500.0,
+            exit_price=2550.0,
+            sample_type="IS",
+        ),
+        Trade(
+            symbol="TCS.NS",
+            entry_date=date(2023, 2, 3),
+            exit_date=date(2023, 2, 8),
+            entry_price=3400.0,
+            exit_price=3350.0,
+            sample_type="OOS",
+        ),
+    ]
+    signals = pd.DataFrame({"date": [date(2023, 1, 5), date(2023, 2, 3)], "signal": [1, -1]})
+    context = RunContext(config=config, git_hash=_get_git_hash(), data_hash="mock_data_hash")
+    proposals = RunProposals(signals=signals, trades=trades)
+    metrics = {"total_return_pct": 0.01, "sharpe_ratio": 1.5, "num_trades": 2}
+    return RunResult(context=context, proposals=proposals, metrics=metrics)
 
 
 # impure
-def run_pipeline(config: Config, console: Console) -> None:
+def run_backtest(config: Config, console: Console) -> None:
     """
-    Runs the main backtesting pipeline.
-    #impure: This function will have side effects (I/O, etc.).
+    Runs the main backtesting pipeline and generates reports.
+    #impure: This function has side effects (I/O).
     """
-    console.print(f"Pipeline started for run: [bold]{config.run.name}[/bold]")
+    console.print(f"Backtest started for run: [bold]{config.run.name}[/bold]")
 
-    # 1. Load data
-    console.print("Loading data snapshots...")
-    symbols = discover_symbols(config)
-    if not symbols:
-        console.print("[bold red]Error: No data snapshots found.[/bold red]")
-        console.print("Please run the 'refresh-data' command first.")
-        return
+    # This is where the actual backtesting logic would go.
+    # For now, we generate a mock result.
+    result = _generate_mock_result(config)
 
-    all_data = load_snapshots(symbols, config)
-    console.print(f"Successfully loaded data for {len(symbols)} symbols.")
+    # Ensure the output directory exists.
+    output_dir = Path(config.run.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Add features
-    console.print("Adding features...")
-    all_data = add_features(all_data)
+    # Generate all reports.
+    generate_trade_ledger_csv(result, output_dir)
+    generate_summary_json(result, output_dir)
+    generate_summary_markdown(result, output_dir)
+    generate_run_manifest(result, output_dir)
 
-    # 3. Pipeline Execution (Placeholder)
-    console.print("\n[bold yellow]Warning: Core pipeline logic is not implemented.[/bold yellow]")
-    console.print("This script currently only loads data and does not perform a backtest.")
-    console.print("Exiting.")
+    console.print(f"Reports saved to: [cyan]{output_dir.resolve()}[/cyan]")

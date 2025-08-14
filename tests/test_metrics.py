@@ -9,13 +9,13 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-from src.metrics import aggregate_portfolio_returns
-from src.reporting import (
+from src.metrics import (
+    aggregate_portfolio_returns,
     calculate_benchmark_metrics,
     calculate_oos_is_ratio,
     calculate_per_stock_metrics,
-    calculate_trade_returns,
 )
+from src.reporting import calculate_trade_returns
 from src.types import Trade
 
 

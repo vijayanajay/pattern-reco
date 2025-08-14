@@ -60,9 +60,9 @@ def test_cli_run_command_runs(tmp_path: Path) -> None:
     result = runner.invoke(app, ["run", "--config", str(config_path)])
 
     assert result.exit_code == 0
-    # The pipeline now checks for data and exits if none is found.
+    # The pipeline now generates mock results and reports.
     # This output is sufficient to confirm the command ran.
-    assert "No data snapshots found" in result.output
+    assert "Backtest started for run" in result.output
 
 
 def test_cli_refresh_command_existing_symbols(mocker, tmp_path: Path) -> None:

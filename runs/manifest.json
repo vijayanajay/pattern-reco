@@ -1,0 +1,73 @@
+{
+    "run_name": "test_cli_run",
+    "git_hash": "b15bf37ca5717b02b33ef083c68ae98b73408c01",
+    "data_hash": "mock_data_hash",
+    "config": {
+        "run": {
+            "name": "test_cli_run",
+            "t0": "2023-01-01",
+            "seed": 42,
+            "output_dir": "runs"
+        },
+        "data": {
+            "source": "yfinance_test",
+            "interval": "1d",
+            "start_date": "2022-01-01",
+            "end_date": "2023-01-31",
+            "snapshot_dir": "/tmp/pytest-of-jules/pytest-0/test_cli_run_command_runs0",
+            "refresh": false
+        },
+        "universe": {
+            "include_symbols": [
+                "RELIANCE.NS"
+            ],
+            "exclude_symbols": [],
+            "size": 10,
+            "min_turnover": 10000000.0,
+            "min_price": 10.0,
+            "lookback_years": 2
+        },
+        "detector": {
+            "name": "gap_z",
+            "window_range": [
+                20,
+                60
+            ],
+            "k_low_range": [
+                -1.0,
+                -2.0
+            ],
+            "max_hold": 22,
+            "min_hit_rate": 0.4
+        },
+        "walk_forward": {
+            "is_years": 3,
+            "oos_years": 1,
+            "holdout_years": 2
+        },
+        "execution": {
+            "circuit_guard_pct": 0.1,
+            "fees_bps": 10.0,
+            "slippage_model": {
+                "gap_2pct": 5.0,
+                "gap_5pct": 10.0,
+                "gap_high": 20.0
+            }
+        },
+        "portfolio": {
+            "max_concurrent": 5,
+            "position_size": 100000.0,
+            "equal_weight": true,
+            "reentry_lockout": true
+        },
+        "reporting": {
+            "generate_plots": false,
+            "output_formats": [
+                "json",
+                "markdown",
+                "csv"
+            ],
+            "include_unfilled": true
+        }
+    }
+}
