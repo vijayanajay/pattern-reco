@@ -1,118 +1,115 @@
 """
-Configuration loading and validation for the anomaly detection system.
+Configuration loading and validation.
+
+Simplifies the original design by using a single Pydantic model
+and leveraging dictionaries for nested configuration, reducing boilerplate.
 """
 
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Literal
+from typing import Any, Dict
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, root_validator, validator
+from pydantic import BaseModel, ValidationError, root_validator
 
 __all__ = ["load_config", "Config"]
 
 
-class RunConfig(BaseModel):
-    name: str
-    t0: date
-    seed: int = 42
-    output_dir: Path = Field(default_factory=lambda: Path("runs"))
-
-
-class DataConfig(BaseModel):
-    source: str = "yfinance"
-    interval: Literal["1d", "1wk", "1mo"] = "1d"
-    start_date: date
-    end_date: date
-    refresh: bool = False
-    snapshot_dir: Path = Field(default_factory=lambda: Path("data/snapshots"))
-
-    @validator("end_date")
-    def end_after_start(cls, v: date, values: Dict) -> date:
-        if "start_date" in values and v <= values["start_date"]:
-            raise ValueError("end_date must be after start_date")
-        return v
-
-
-class UniverseConfig(BaseModel):
-    size: int = 10
-    min_turnover: float = 1e7
-    min_price: float = 10.0
-    include_symbols: List[str] = []
-    exclude_symbols: List[str] = []
-    lookback_years: int = 2
-
-
-class DetectorConfig(BaseModel):
-    name: str = "gap_z"
-    window_range: List[int] = [20, 60]
-    k_low_range: List[float] = [-1.0, -2.0]
-    max_hold: int = 22
-    min_hit_rate: float = 0.4
-
-
-class WalkForwardConfig(BaseModel):
-    is_years: int = 3
-    oos_years: int = 1
-    holdout_years: int = 2
-
-
-class ExecutionConfig(BaseModel):
-    circuit_guard_pct: float = 0.10
-    fees_bps: float = 10.0
-    slippage_model: Dict[str, float] = {
-        "gap_2pct": 5.0,
-        "gap_5pct": 10.0,
-        "gap_high": 20.0,
-    }
-
-
-class PortfolioConfig(BaseModel):
-    max_concurrent: int = 5
-    position_size: float = 100000.0
-    equal_weight: bool = True
-    reentry_lockout: bool = True
-
-
-class ReportingConfig(BaseModel):
-    generate_plots: bool = False
-    output_formats: List[str] = ["json", "markdown", "csv"]
-    include_unfilled: bool = True
-
-
 class Config(BaseModel):
-    run: RunConfig
-    data: DataConfig
-    universe: UniverseConfig
-    detector: DetectorConfig
-    walk_forward: WalkForwardConfig
-    execution: ExecutionConfig
-    portfolio: PortfolioConfig
-    reporting: ReportingConfig
+    """
+    A single Pydantic model for the entire configuration.
+    Nested structures are handled as dictionaries, providing flexibility.
+    """
+
+    run: Dict[str, Any]
+    data: Dict[str, Any]
+    universe: Dict[str, Any]
+    detector: Dict[str, Any]
+    walk_forward: Dict[str, Any]
+    execution: Dict[str, Any]
+    portfolio: Dict[str, Any]
+    reporting: Dict[str, Any]
+
+    class Config:
+        # Allow Pydantic to automatically convert date strings.
+        json_encoders = {date: lambda v: v.strftime("%Y-%m-%d")}
+
+    @root_validator(pre=True)
+    def check_required_sections(cls, values: Dict) -> Dict:
+        """Check for presence of all top-level configuration sections."""
+        required = {
+            "run",
+            "data",
+            "universe",
+            "detector",
+            "walk_forward",
+            "execution",
+            "portfolio",
+            "reporting",
+        }
+        missing = required - set(values.keys())
+        if missing:
+            raise ValueError(f"Missing required config sections: {', '.join(missing)}")
+        return values
 
     @root_validator
-    def t0_is_within_data_range(cls, values: Dict) -> Dict:
-        run_cfg, data_cfg = values.get("run"), values.get("data")
-        if run_cfg and data_cfg:
-            if run_cfg.t0 <= data_cfg.start_date:
-                raise ValueError("run.t0 must be after data.start_date")
-            if run_cfg.t0 >= data_cfg.end_date:
-                raise ValueError("run.t0 must be before data.end_date")
+    def validate_and_parse_dates(cls, values: Dict) -> Dict:
+        """
+        Validate date logic and parse date strings, since they are in a generic Dict.
+        Pydantic v1 doesn't automatically parse types inside a `Dict[str, Any]`.
+        """
+        from datetime import datetime
+
+        run_cfg = values.get("run", {})
+        data_cfg = values.get("data", {})
+
+        try:
+            # Manually parse dates from strings
+            run_t0_str = run_cfg.get("t0")
+            data_start_str = data_cfg.get("start_date")
+            data_end_str = data_cfg.get("end_date")
+
+            if not all([run_t0_str, data_start_str, data_end_str]):
+                raise ValueError("Missing required date fields: run.t0, data.start_date, data.end_date")
+
+            run_t0 = datetime.strptime(str(run_t0_str), "%Y-%m-%d").date()
+            data_start = datetime.strptime(str(data_start_str), "%Y-%m-%d").date()
+            data_end = datetime.strptime(str(data_end_str), "%Y-%m-%d").date()
+
+            # Store the parsed `date` objects back into the config dict
+            values["run"]["t0"] = run_t0
+            values["data"]["start_date"] = data_start
+            values["data"]["end_date"] = data_end
+
+        except (ValueError, TypeError) as e:
+            # Catches missing keys from .get() and strptime format errors
+            raise ValueError(f"Invalid or missing date configuration: {e}") from e
+
+        if data_end <= data_start:
+            raise ValueError("data.end_date must be after data.start_date")
+        if not (data_start < run_t0 < data_end):
+            raise ValueError("run.t0 must be within the data.start_date and data.end_date")
+
         return values
 
 
 # impure
 def load_config(config_path: Path) -> Config:
-    """Load and validate YAML configuration file."""
+    """
+    Load and validate YAML configuration file.
+    #impure: Reads from the filesystem.
+    """
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
     try:
         with config_path.open("r", encoding="utf-8") as f:
             raw_config = yaml.safe_load(f)
         if not isinstance(raw_config, dict):
             raise ValueError("Configuration must be a YAML object.")
-        return Config(**raw_config)
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Configuration file not found: {config_path}") from e
+        return Config.parse_obj(raw_config)
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e
-    except ValidationError as e:
-        raise ValueError(f"Configuration validation failed:\n{e}") from e
+    except (ValidationError, ValueError, TypeError) as e:
+        # Re-raise Pydantic's error to provide more specific feedback.
+        raise ValueError(f"Configuration validation failed: {e}") from e
