@@ -1,11 +1,10 @@
-"""
-Tests for signal detection logic.
-"""
+"""Tests for signal detection logic."""
 import pandas as pd
 import numpy as np
 import pytest
 
 from src.detectors import generate_signals
+
 
 @pytest.fixture
 def sample_gap_data() -> pd.DataFrame:
@@ -16,7 +15,7 @@ def sample_gap_data() -> pd.DataFrame:
     return pd.DataFrame({"gap_pct": data})
 
 
-def test_generate_signals_detects_outlier(sample_gap_data: pd.DataFrame):
+def test_generate_signals_detects_outlier(sample_gap_data: pd.DataFrame) -> None:
     """
     Tests that generate_signals correctly identifies a clear negative outlier.
     """
@@ -28,12 +27,12 @@ def test_generate_signals_detects_outlier(sample_gap_data: pd.DataFrame):
     assert isinstance(signals, pd.Series)
     assert signals.dtype == bool
     # The signal should fire on the outlier day
-    assert signals.iloc[-5] == True
+    assert signals.iloc[-5] is True
     # Most other days should not have signals
     assert signals.sum() < 5  # Expect only a few signals, not many
 
 
-def test_generate_signals_no_signal(sample_gap_data: pd.DataFrame):
+def test_generate_signals_no_signal(sample_gap_data: pd.DataFrame) -> None:
     """
     Tests that no signals are generated if the threshold is not met.
     """
@@ -45,7 +44,7 @@ def test_generate_signals_no_signal(sample_gap_data: pd.DataFrame):
     assert signals.sum() == 0
 
 
-def test_generate_signals_bad_input():
+def test_generate_signals_bad_input() -> None:
     """
     Tests that the function raises errors for invalid input.
     """

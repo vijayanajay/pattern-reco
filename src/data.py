@@ -14,7 +14,13 @@ from rich.console import Console
 
 from src.config import Config
 
-__all__ = ["fetch_and_snapshot", "load_snapshots", "discover_symbols", "select_universe"]
+__all__ = [
+    "fetch_and_snapshot",
+    "load_snapshots",
+    "discover_symbols",
+    "select_universe",
+    "refresh_market_data",
+]
 
 
 def _get_run_metadata(config: Config) -> Dict[str, str]:
@@ -180,3 +186,33 @@ def load_snapshots(
         loaded_data[symbol] = df
 
     return loaded_data
+
+
+# impure
+def refresh_market_data(config: Config, console: Console) -> None:
+    """
+    Refreshes data snapshots from the source for all discovered or configured symbols.
+    """
+    console.print("Starting data refresh...")
+    symbols_to_refresh = discover_symbols(config)
+
+    if not symbols_to_refresh:
+        # Fallback to the include_symbols list if no snapshots exist
+        symbols_to_refresh = config.universe.include_symbols
+        if symbols_to_refresh:
+            console.print("No existing snapshots found. Performing initial download for symbols in config.")
+        else:
+            console.print("[yellow]Warning: No symbols to refresh.[/yellow]")
+            console.print("No snapshots found and 'universe.include_symbols' is empty.")
+            return
+    else:
+        console.print(f"Found {len(symbols_to_refresh)} existing symbols. Refreshing them.")
+
+    failed_symbols = fetch_and_snapshot(symbols_to_refresh, config)
+
+    if failed_symbols:
+        console.print(f"\n[bold yellow]Warning:[/bold yellow] Failed to fetch data for {len(failed_symbols)} symbols:")
+        for symbol in sorted(failed_symbols):
+            console.print(f" - {symbol}")
+
+    console.print("\n[bold green]Data refresh completed.[/bold green]")

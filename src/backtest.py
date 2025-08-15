@@ -1,20 +1,28 @@
 """
-Walk-forward validation, execution, and portfolio logic using vectorbt.
+Main pipeline orchestration and backtesting engine.
 
-This module is the core of the backtesting engine. It takes feature-rich
-price data and signals, and uses the `vectorbt` library to simulate
-trade execution and portfolio performance.
+This module orchestrates the entire backtesting pipeline, from data loading
+and feature engineering to execution and reporting. It uses vectorbt for
+the core backtest simulation.
 """
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import vectorbt as vbt
 from rich.console import Console
 
-from src.config import Config, DetectorConfig
+from src.config import Config
+from src.data import load_snapshots, select_universe
 from src.detectors import generate_signals
+from src.features import add_features
+from src.reporting import generate_all_reports
 
-__all__ = ["run"]
+__all__ = ["run_pipeline", "PipelineError"]
+
+
+class PipelineError(Exception):
+    """Custom exception for pipeline failures."""
 
 
 def _prepare_vbt_data(
@@ -39,7 +47,8 @@ def _prepare_vbt_data(
     return open_prices, close_prices
 
 
-def run(
+# impure
+def _run_vbt_backtest(
     config: Config,
     processed_data: dict[str, pd.DataFrame],
     console: Console,
@@ -77,7 +86,7 @@ def run(
     portfolio = vbt.Portfolio.from_signals(
         close=close_prices,  # Use close price for transactions and valuation
         entries=shifted_entries,
-        exits=np.nan, # Time-based exits are handled by `freq`
+        exits=np.nan,  # Time-based exits are handled by `freq`
         freq=f"{config.detector.max_hold}D",
         fees=config.execution.fees_bps / 10000.0,
         init_cash=1e9,
@@ -85,3 +94,37 @@ def run(
 
     console.print("Backtest complete.")
     return portfolio
+
+
+# impure
+def run_pipeline(config: Config, console: Console) -> None:
+    """
+    Execute the full backtest pipeline from data loading to report generation.
+    """
+    # Step 1: Setup - Universe and Data Loading
+    console.rule("[bold]1. Setting up Run[/bold]")
+    universe = select_universe(config, console)
+    if not universe:
+        raise PipelineError("Universe is empty. Check config `universe` settings.")
+
+    snapshots = load_snapshots(universe, config, console)
+    if not snapshots:
+        raise PipelineError("No data loaded. Run `refresh-data` or check universe.")
+
+    # Step 2: Feature Processing
+    console.rule("[bold]2. Processing Features[/bold]")
+    processed_data = {symbol: add_features(df) for symbol, df in snapshots.items()}
+    console.print("Feature processing complete.")
+
+    # Step 3: Backtest Execution
+    console.rule("[bold]3. Executing Backtest[/bold]")
+    results = _run_vbt_backtest(config, processed_data, console)
+    console.print("Backtest execution complete.")
+
+    # Step 4: Reporting
+    console.rule("[bold]4. Generating Reports[/bold]")
+    run_dir = Path(config.run.output_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    console.print(f"Run artifacts will be saved to: [cyan]{run_dir}[/cyan]")
+    generate_all_reports(config, results, run_dir, console)
+    console.print("Reporting complete.")

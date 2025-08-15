@@ -1,9 +1,8 @@
-"""
-Tests for configuration loading and validation.
-"""
+"""Tests for configuration loading and validation."""
 import copy
 from pathlib import Path
 from datetime import date
+from typing import Dict, Any
 
 import pytest
 import yaml
@@ -11,7 +10,7 @@ import yaml
 from src.config import Config, load_config, _from_dict, RunConfig
 
 # A complete and valid dictionary that can be used to construct a Config object.
-FULL_CONFIG_DICT = {
+FULL_CONFIG_DICT: Dict[str, Any] = {
     "run": {"name": "test_run", "t0": "2023-01-15", "seed": 42, "output_dir": "test_output"},
     "data": {
         "source": "yfinance", "interval": "1d", "start_date": "2023-01-01",
@@ -92,7 +91,7 @@ def test_t0_validation_fails(tmp_path: Path) -> None:
         load_config(config_path)
 
 
-def test_from_dict_conversion():
+def test_from_dict_conversion() -> None:
     """Tests the internal _from_dict helper for creating nested dataclasses."""
     config_dict = copy.deepcopy(FULL_CONFIG_DICT)
     # The helper expects string dates, so convert them back

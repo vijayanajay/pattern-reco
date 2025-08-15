@@ -11,10 +11,12 @@ from rich.console import Console
 
 from src.config import Config
 
+from typing import Any
+
 __all__ = ["generate_all_reports"]
 
 
-def _to_json_serializable(data):
+def _to_json_serializable(data: Any) -> Any:
     """Recursively converts non-serializable types in a dictionary."""
     if isinstance(data, dict):
         return {k: _to_json_serializable(v) for k, v in data.items()}

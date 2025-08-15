@@ -11,7 +11,7 @@ import yaml
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import List, Literal, Dict, Any
+from typing import List, Literal, Dict, Any, Type, cast
 
 __all__ = ["load_config", "Config"]
 
@@ -115,13 +115,23 @@ class Config:
 # --------------------------------------------------------------------------------------
 
 
-def _from_dict(data_class, data: Dict[str, Any]):
+def _from_dict(data_class: Type[Any], data: Any) -> Any:
     """Recursively creates nested dataclasses from a dictionary."""
     if isinstance(data, dict):
+        # We can't know the type of data_class at static analysis time, so we
+        # have to treat it as Any. The caller is responsible for casting.
         field_types = {f.name: f.type for f in data_class.__dataclass_fields__.values()}
-        return data_class(**{
-            k: _from_dict(field_types.get(k), v) for k, v in data.items()
-        })
+
+        kwargs = {}
+        for k, v in data.items():
+            field_type = field_types.get(k)
+            # If the key from the dict is a field in the dataclass, recurse.
+            # Otherwise, just pass it through. The dataclass constructor will
+            # raise a TypeError for unexpected arguments, which is handled
+            # by the caller. This satisfies mypy's check for None as an arg.
+            kwargs[k] = _from_dict(field_type, v) if field_type else v
+        return data_class(**kwargs)
+
     # Convert date strings to date objects
     if isinstance(data, str) and data_class is date:
         return date.fromisoformat(data)
@@ -179,6 +189,8 @@ def load_config(config_path: Path) -> Config:
 
     # Convert the raw dictionary to nested dataclasses
     try:
-        return _from_dict(Config, raw_config)
+        # We cast here because _from_dict is too dynamic for mypy to track types.
+        # The validation above gives us confidence that the structure is correct.
+        return cast(Config, _from_dict(Config, raw_config))
     except (TypeError, KeyError) as e:
         raise ValueError(f"Configuration validation failed: missing or invalid key. Details: {e}") from e

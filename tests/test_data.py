@@ -1,20 +1,25 @@
-"""
-Tests for data fetching, snapshot management, and universe selection.
-"""
+"""Tests for data fetching, snapshot management, and universe selection."""
 import copy
 from pathlib import Path
 from unittest.mock import Mock, patch
 from datetime import date
+from typing import Dict, Any, cast
+from pytest_mock import MockerFixture
 
 import pandas as pd
 import pytest
 from rich.console import Console
 
 from src.config import Config, _from_dict
-from src.data import fetch_and_snapshot, load_snapshots, select_universe
+from src.data import (
+    fetch_and_snapshot,
+    load_snapshots,
+    select_universe,
+    refresh_market_data,
+)
 
 # A complete and valid dictionary for creating a Config object in tests.
-FULL_CONFIG_DICT = {
+FULL_CONFIG_DICT: Dict[str, Any] = {
     "run": {"name": "test_run", "t0": date(2023, 1, 15), "seed": 42, "output_dir": ""},
     "data": {
         "start_date": date(2023, 1, 1), "end_date": date(2023, 1, 31),
@@ -38,7 +43,8 @@ def test_config(tmp_path: Path) -> Config:
     config_dict = copy.deepcopy(FULL_CONFIG_DICT)
     config_dict["data"]["snapshot_dir"] = str(tmp_path)
     config_dict["run"]["output_dir"] = str(tmp_path)
-    return _from_dict(Config, config_dict)
+    # Cast is used here because _from_dict is too dynamic for mypy
+    return cast(Config, _from_dict(Config, config_dict))
 
 
 @patch("src.data.yf.download")
@@ -77,7 +83,7 @@ def test_load_snapshots_missing_dir_raises_error(test_config: Config) -> None:
     """Test that loading from a non-existent snapshot directory raises an error."""
     config_dict = copy.deepcopy(FULL_CONFIG_DICT)
     config_dict["data"]["snapshot_dir"] = str(test_config.data.snapshot_dir / "non_existent")
-    bad_config = _from_dict(Config, config_dict)
+    bad_config = cast(Config, _from_dict(Config, config_dict))
     with pytest.raises(FileNotFoundError):
         load_snapshots(["TEST.NS"], bad_config, Console())
 
@@ -99,7 +105,48 @@ def test_select_universe(test_config: Config, tmp_path: Path) -> None:
     config_dict = copy.deepcopy(FULL_CONFIG_DICT)
     config_dict["data"]["snapshot_dir"] = str(tmp_path)
     config_dict["universe"]["size"] = 1
-    modified_config = _from_dict(Config, config_dict)
+    modified_config = cast(Config, _from_dict(Config, config_dict))
 
     universe = select_universe(modified_config, Console())
     assert universe == ["STOCK_A.NS"]
+
+
+def test_refresh_market_data_existing(mocker: MockerFixture, test_config: Config) -> None:
+    """Tests refresh when symbols are discovered on disk."""
+    m_discover = mocker.patch("src.data.discover_symbols", return_value=["EXISTING.NS"])
+    m_fetch = mocker.patch("src.data.fetch_and_snapshot", return_value=[])
+
+    refresh_market_data(test_config, Console())
+
+    m_discover.assert_called_once_with(test_config)
+    m_fetch.assert_called_once_with(["EXISTING.NS"], test_config)
+
+
+def test_refresh_market_data_fallback_to_config(mocker: MockerFixture, test_config: Config) -> None:
+    """Tests refresh when no snapshots exist, falling back to config."""
+    m_discover = mocker.patch("src.data.discover_symbols", return_value=[])
+    m_fetch = mocker.patch("src.data.fetch_and_snapshot", return_value=[])
+
+    refresh_market_data(test_config, Console())
+
+    m_discover.assert_called_once_with(test_config)
+    # Comes from FULL_CONFIG_DICT's include_symbols list
+    m_fetch.assert_called_once_with(
+        ["TEST.NS", "INVALID.NS", "MISSING.NS"], test_config
+    )
+
+
+def test_refresh_market_data_no_symbols_anywhere(mocker: MockerFixture, test_config: Config) -> None:
+    """Tests refresh when no snapshots or config symbols exist."""
+    m_discover = mocker.patch("src.data.discover_symbols", return_value=[])
+    m_fetch = mocker.patch("src.data.fetch_and_snapshot", return_value=[])
+
+    # Create a config with no include_symbols
+    config_dict = copy.deepcopy(FULL_CONFIG_DICT)
+    config_dict["universe"]["include_symbols"] = []
+    empty_config = cast(Config, _from_dict(Config, config_dict))
+
+    refresh_market_data(empty_config, Console())
+
+    m_discover.assert_called_once_with(empty_config)
+    m_fetch.assert_not_called()

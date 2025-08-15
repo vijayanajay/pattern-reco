@@ -5,12 +5,13 @@ For the MVP, this contains the Gap-Z detector. The functions are pure,
 taking a DataFrame and parameters, and returning a signal Series.
 """
 
+from typing import Optional
 import pandas as pd
 
 __all__ = ["generate_signals"]
 
 
-def _rolling_zscore(series: pd.Series, window: int, min_periods: int = None) -> pd.Series:
+def _rolling_zscore(series: pd.Series, window: int, min_periods: Optional[int] = None) -> pd.Series:
     """
     Calculates the rolling z-score of a time series.
     z = (value - rolling_mean) / rolling_std
