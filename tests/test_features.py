@@ -2,32 +2,48 @@
 Tests for feature engineering functions.
 """
 import pandas as pd
+import numpy as np
+import pytest
 
 from src.features import add_features
 
 
 def test_add_features() -> None:
     """
-    Test that the add_features function correctly adds the Turnover column.
+    Test that the add_features function correctly adds all core features
+    to a single DataFrame.
     """
-    # 1. Prepare mock data
-    raw_data = {
-        "STOCK_A": pd.DataFrame({"Close": [100.0, 101.0], "Volume": [1000.0, 1100.0]}),
-        "STOCK_B": pd.DataFrame({"Close": [50.0, 50.5], "Volume": [5000.0, 5500.0]}),
-    }
+    # 1. Prepare a single mock DataFrame
+    raw_df = pd.DataFrame({
+        "Open": [100.0, 102.0, 101.0],
+        "Close": [101.0, 101.0, 103.0],
+        "Volume": [1000.0, 1100.0, 1200.0],
+    })
 
     # 2. Run the function
-    featured_data = add_features(raw_data)
+    featured_df = add_features(raw_df)
 
     # 3. Assert outcomes
-    assert "STOCK_A" in featured_data
-    df_a = featured_data["STOCK_A"]
-    assert "Turnover" in df_a.columns
-    assert df_a["Turnover"].iloc[0] == 100.0 * 1000.0
-    assert df_a["Turnover"].iloc[1] == 101.0 * 1100.0
+    assert isinstance(featured_df, pd.DataFrame)
 
-    assert "STOCK_B" in featured_data
-    df_b = featured_data["STOCK_B"]
-    assert "Turnover" in df_b.columns
-    assert df_b["Turnover"].iloc[0] == 50.0 * 5000.0
-    assert df_b["Turnover"].iloc[1] == 50.5 * 5500.0
+    # Check for Turnover
+    assert "Turnover" in featured_df.columns
+    expected_turnover = pd.Series([101000.0, 111100.0, 123600.0])
+    pd.testing.assert_series_equal(featured_df["Turnover"], expected_turnover, check_names=False)
+
+    # Check for returns
+    assert "returns" in featured_df.columns
+    # Day 0: NaN, Day 1: 101/101 - 1 = 0, Day 2: 103/101 - 1 = 0.0198
+    assert pd.isna(featured_df["returns"].iloc[0])
+    assert featured_df["returns"].iloc[1] == 0.0
+    assert featured_df["returns"].iloc[2] == pytest.approx(0.01980198)
+
+    # Check for gap_pct
+    assert "gap_pct" in featured_df.columns
+    # Day 0: NaN, Day 1: (102 - 101)/101 = 0.0099, Day 2: (101 - 101)/101 = 0.0
+    assert pd.isna(featured_df["gap_pct"].iloc[0])
+    assert featured_df["gap_pct"].iloc[1] == pytest.approx(0.00990099)
+    assert featured_df["gap_pct"].iloc[2] == 0.0
+
+    # Ensure original DataFrame is not modified
+    assert "Turnover" not in raw_df.columns
