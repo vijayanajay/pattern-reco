@@ -16,6 +16,7 @@ data:
   refresh: false
 
 universe:
+  include_symbols: []       # Manually include symbols, bypassing discovery
   size: 10
   min_turnover: 10000000.0  # 1 crore INR minimum daily turnover
   min_price: 10.0           # Minimum ₹10 per share

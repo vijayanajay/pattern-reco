@@ -1,6 +1,6 @@
 {
     "run_name": "test_cli_run",
-    "git_hash": "b15bf37ca5717b02b33ef083c68ae98b73408c01",
+    "git_hash": "64494294578dba60becfb09c391658f2c1466396",
     "data_hash": "mock_data_hash",
     "config": {
         "run": {

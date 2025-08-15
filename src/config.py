@@ -1,148 +1,162 @@
 """
-Configuration loading and validation using Pydantic.
+Configuration loading and validation for the pattern-reco application.
 
-This version uses nested, strongly-typed Pydantic models instead of
-generic dictionaries. This improves type safety, enables editor autocompletion,
-and delegates validation to Pydantic, making the code cleaner and more robust.
+This module uses standard library dataclasses for configuration objects.
+It avoids external dependencies like Pydantic, favoring explicit, pure
+validation functions. This makes the configuration process transparent
+and easy to debug.
 """
 
+import yaml
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import List, Literal
-
-import yaml
-from pydantic import BaseModel, Field, ValidationError, root_validator
+from typing import List, Literal, Dict, Any
 
 __all__ = ["load_config", "Config"]
 
 
-# §1. Nested Configuration Models
+# §1. Nested Configuration Dataclasses
 # --------------------------------------------------------------------------------------
-# Each class represents a section of the YAML configuration file, providing
-# validation, default values, and type hints.
+# Simple, frozen dataclasses replace Pydantic models for clarity and performance.
 
 
-class RunConfig(BaseModel):
-    """Configuration for a single run."""
-
+@dataclass(frozen=True)
+class RunConfig:
     name: str
     t0: date
-    seed: int = 42
-    output_dir: Path = Path("runs")
+    seed: int
+    output_dir: Path
 
 
-class DataConfig(BaseModel):
-    """Configuration for data source and processing."""
-
-    source: str = "yfinance"
-    interval: Literal["1d", "1wk", "1mo"] = "1d"
+@dataclass(frozen=True)
+class DataConfig:
+    source: str
+    interval: Literal["1d", "1wk", "1mo"]
     start_date: date
     end_date: date
     snapshot_dir: Path
-    refresh: bool = False
+    refresh: bool
 
 
-class UniverseConfig(BaseModel):
-    """Configuration for stock universe selection."""
-
-    include_symbols: List[str] = Field(default_factory=list)
-    exclude_symbols: List[str] = Field(default_factory=list)
-    size: int = 10
-    min_turnover: float = 10_000_000.0
-    min_price: float = 10.0
-    lookback_years: int = 2
-
-
-class DetectorConfig(BaseModel):
-    """Configuration for the signal detector."""
-
-    name: str = "gap_z"
-    window_range: List[int] = Field(default_factory=lambda: [20, 60])
-    k_low_range: List[float] = Field(default_factory=lambda: [-1.0, -2.0])
-    max_hold: int = 22
-    min_hit_rate: float = 0.4
+@dataclass(frozen=True)
+class UniverseConfig:
+    include_symbols: List[str]
+    exclude_symbols: List[str]
+    size: int
+    min_turnover: float
+    min_price: float
+    lookback_years: int
 
 
-class WalkForwardConfig(BaseModel):
-    """Configuration for walk-forward validation."""
-
-    is_years: int = 3
-    oos_years: int = 1
-    holdout_years: int = 2
-
-
-class SlippageConfig(BaseModel):
-    """Configuration for the slippage model."""
-
-    gap_2pct: float = 5.0
-    gap_5pct: float = 10.0
-    gap_high: float = 20.0
+@dataclass(frozen=True)
+class DetectorConfig:
+    name: str
+    window_range: List[int]
+    k_low_range: List[float]
+    max_hold: int
+    min_hit_rate: float
 
 
-class ExecutionConfig(BaseModel):
-    """Configuration for trade execution simulation."""
-
-    circuit_guard_pct: float = 0.10
-    fees_bps: float = 10.0
-    slippage_model: SlippageConfig = Field(default_factory=SlippageConfig)
-
-
-class PortfolioConfig(BaseModel):
-    """Configuration for portfolio management."""
-
-    max_concurrent: int = 5
-    position_size: float = 100_000.0
-    equal_weight: bool = True
-    reentry_lockout: bool = True
+@dataclass(frozen=True)
+class WalkForwardConfig:
+    is_years: int
+    oos_years: int
+    holdout_years: int
 
 
-class ReportingConfig(BaseModel):
-    """Configuration for output reporting."""
+@dataclass(frozen=True)
+class SlippageConfig:
+    gap_2pct: float
+    gap_5pct: float
+    gap_high: float
 
-    generate_plots: bool = False
-    output_formats: List[Literal["json", "markdown", "csv"]] = Field(
-        default_factory=lambda: ["json", "markdown", "csv"]
-    )
-    include_unfilled: bool = True
+
+@dataclass(frozen=True)
+class ExecutionConfig:
+    circuit_guard_pct: float
+    fees_bps: float
+    slippage_model: SlippageConfig
+
+
+@dataclass(frozen=True)
+class PortfolioConfig:
+    max_concurrent: int
+    position_size: float
+    equal_weight: bool
+    reentry_lockout: bool
+
+
+@dataclass(frozen=True)
+class ReportingConfig:
+    generate_plots: bool
+    output_formats: List[Literal["json", "markdown", "csv"]]
+    include_unfilled: bool
 
 
 # §2. Top-Level Configuration
 # --------------------------------------------------------------------------------------
 
 
-class Config(BaseModel):
-    """The root configuration model, composing all nested sections."""
-
+@dataclass(frozen=True)
+class Config:
+    """The root configuration object, composing all nested sections."""
     run: RunConfig
     data: DataConfig
-    universe: UniverseConfig = Field(default_factory=UniverseConfig)
-    detector: DetectorConfig = Field(default_factory=DetectorConfig)
-    walk_forward: WalkForwardConfig = Field(default_factory=WalkForwardConfig)
-    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
-    portfolio: PortfolioConfig = Field(default_factory=PortfolioConfig)
-    reporting: ReportingConfig = Field(default_factory=ReportingConfig)
-
-    @root_validator
-    def validate_dates(cls, values):
-        """Ensures logical consistency between different date fields."""
-        run_cfg = values.get("run")
-        data_cfg = values.get("data")
-
-        # This check is only performed if both configs are present.
-        if run_cfg and data_cfg:
-            if data_cfg.end_date <= data_cfg.start_date:
-                raise ValueError("data.end_date must be after data.start_date")
-            if not (data_cfg.start_date < run_cfg.t0 < data_cfg.end_date):
-                raise ValueError("run.t0 must be within the data start and end dates")
-        return values
-
-    class Config:
-        # Pydantic v1 model configuration
-        allow_population_by_field_name = True
+    universe: UniverseConfig
+    detector: DetectorConfig
+    walk_forward: WalkForwardConfig
+    execution: ExecutionConfig
+    portfolio: PortfolioConfig
+    reporting: ReportingConfig
 
 
-# §3. Loading Function
+# §3. Validation and Loading
 # --------------------------------------------------------------------------------------
+
+
+def _from_dict(data_class, data: Dict[str, Any]):
+    """Recursively creates nested dataclasses from a dictionary."""
+    if isinstance(data, dict):
+        field_types = {f.name: f.type for f in data_class.__dataclass_fields__.values()}
+        return data_class(**{
+            k: _from_dict(field_types.get(k), v) for k, v in data.items()
+        })
+    # Convert date strings to date objects
+    if isinstance(data, str) and data_class is date:
+        return date.fromisoformat(data)
+    # Convert path strings to Path objects
+    if isinstance(data, str) and data_class is Path:
+        return Path(data)
+    return data
+
+
+def _validate_config(cfg: Dict[str, Any]) -> None:
+    """
+    Performs simple, explicit validation checks on the raw config dictionary.
+    Fail fast on any logical inconsistencies.
+    """
+    if not isinstance(cfg, dict):
+        raise ValueError("Configuration must be a YAML object.")
+
+    # Date validation
+    run_t0 = date.fromisoformat(cfg["run"]["t0"])
+    data_start = date.fromisoformat(cfg["data"]["start_date"])
+    data_end = date.fromisoformat(cfg["data"]["end_date"])
+
+    if data_end <= data_start:
+        raise ValueError("data.end_date must be after data.start_date")
+
+    if not (data_start < run_t0 < data_end):
+        raise ValueError("run.t0 must be within the data start and end dates")
+
+    # Walk-forward validation
+    wf_config = cfg["walk_forward"]
+    total_wf_years = wf_config["is_years"] + wf_config["oos_years"]
+    if total_wf_years <= 0:
+        raise ValueError("Walk-forward years (is_years + oos_years) must be positive.")
+
+    # Add any other critical checks here.
 
 
 # impure
@@ -157,11 +171,14 @@ def load_config(config_path: Path) -> Config:
     try:
         with config_path.open("r", encoding="utf-8") as f:
             raw_config = yaml.safe_load(f)
-        if not isinstance(raw_config, dict):
-            raise ValueError("Configuration must be a YAML object.")
-        return Config.parse_obj(raw_config)
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e
-    except (ValidationError, ValueError, TypeError) as e:
-        # Re-raise to provide more specific feedback on validation failure.
-        raise ValueError(f"Configuration validation failed: {e}") from e
+
+    # Perform validation before trying to create the objects
+    _validate_config(raw_config)
+
+    # Convert the raw dictionary to nested dataclasses
+    try:
+        return _from_dict(Config, raw_config)
+    except (TypeError, KeyError) as e:
+        raise ValueError(f"Configuration validation failed: missing or invalid key. Details: {e}") from e
