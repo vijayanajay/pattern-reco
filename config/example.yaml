@@ -12,9 +12,11 @@ data:
   interval: "1d"
   start_date: "2010-01-01"
   end_date: "2025-01-01"
+  snapshot_dir: "data/snapshots"
   refresh: false
 
 universe:
+  include_symbols: []       # Manually include symbols, bypassing discovery
   size: 10
   min_turnover: 10000000.0  # 1 crore INR minimum daily turnover
   min_price: 10.0           # Minimum ₹10 per share

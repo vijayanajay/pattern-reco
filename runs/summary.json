@@ -1,0 +1,8 @@
+{
+    "run_name": "test_cli_run",
+    "metrics": {
+        "total_return_pct": 0.01,
+        "sharpe_ratio": 1.5,
+        "num_trades": 2.0
+    }
+}

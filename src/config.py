@@ -1,86 +1,106 @@
 """
-Configuration loading and validation for the anomaly detection system.
+Configuration loading and validation for the pattern-reco application.
+
+This module uses standard library dataclasses for configuration objects.
+It avoids external dependencies like Pydantic, favoring explicit, pure
+validation functions. This makes the configuration process transparent
+and easy to debug.
 """
 
+import yaml
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Literal
-
-import yaml
-from pydantic import BaseModel, Field, ValidationError, root_validator, validator
+from typing import List, Literal, Dict, Any
 
 __all__ = ["load_config", "Config"]
 
 
-class RunConfig(BaseModel):
+# §1. Nested Configuration Dataclasses
+# --------------------------------------------------------------------------------------
+# Simple, frozen dataclasses replace Pydantic models for clarity and performance.
+
+
+@dataclass(frozen=True)
+class RunConfig:
     name: str
     t0: date
-    seed: int = 42
-    output_dir: Path = Field(default_factory=lambda: Path("runs"))
+    seed: int
+    output_dir: Path
 
 
-class DataConfig(BaseModel):
-    source: str = "yfinance"
-    interval: Literal["1d", "1wk", "1mo"] = "1d"
+@dataclass(frozen=True)
+class DataConfig:
+    source: str
+    interval: Literal["1d", "1wk", "1mo"]
     start_date: date
     end_date: date
-    refresh: bool = False
-    snapshot_dir: Path = Field(default_factory=lambda: Path("data/snapshots"))
-
-    @validator("end_date")
-    def end_after_start(cls, v: date, values: Dict) -> date:
-        if "start_date" in values and v <= values["start_date"]:
-            raise ValueError("end_date must be after start_date")
-        return v
+    snapshot_dir: Path
+    refresh: bool
 
 
-class UniverseConfig(BaseModel):
-    size: int = 10
-    min_turnover: float = 1e7
-    min_price: float = 10.0
-    include_symbols: List[str] = []
-    exclude_symbols: List[str] = []
-    lookback_years: int = 2
+@dataclass(frozen=True)
+class UniverseConfig:
+    include_symbols: List[str]
+    exclude_symbols: List[str]
+    size: int
+    min_turnover: float
+    min_price: float
+    lookback_years: int
 
 
-class DetectorConfig(BaseModel):
-    name: str = "gap_z"
-    window_range: List[int] = [20, 60]
-    k_low_range: List[float] = [-1.0, -2.0]
-    max_hold: int = 22
-    min_hit_rate: float = 0.4
+@dataclass(frozen=True)
+class DetectorConfig:
+    name: str
+    window_range: List[int]
+    k_low_range: List[float]
+    max_hold: int
+    min_hit_rate: float
 
 
-class WalkForwardConfig(BaseModel):
-    is_years: int = 3
-    oos_years: int = 1
-    holdout_years: int = 2
+@dataclass(frozen=True)
+class WalkForwardConfig:
+    is_years: int
+    oos_years: int
+    holdout_years: int
 
 
-class ExecutionConfig(BaseModel):
-    circuit_guard_pct: float = 0.10
-    fees_bps: float = 10.0
-    slippage_model: Dict[str, float] = {
-        "gap_2pct": 5.0,
-        "gap_5pct": 10.0,
-        "gap_high": 20.0,
-    }
+@dataclass(frozen=True)
+class SlippageConfig:
+    gap_2pct: float
+    gap_5pct: float
+    gap_high: float
 
 
-class PortfolioConfig(BaseModel):
-    max_concurrent: int = 5
-    position_size: float = 100000.0
-    equal_weight: bool = True
-    reentry_lockout: bool = True
+@dataclass(frozen=True)
+class ExecutionConfig:
+    circuit_guard_pct: float
+    fees_bps: float
+    slippage_model: SlippageConfig
 
 
-class ReportingConfig(BaseModel):
-    generate_plots: bool = False
-    output_formats: List[str] = ["json", "markdown", "csv"]
-    include_unfilled: bool = True
+@dataclass(frozen=True)
+class PortfolioConfig:
+    max_concurrent: int
+    position_size: float
+    equal_weight: bool
+    reentry_lockout: bool
 
 
-class Config(BaseModel):
+@dataclass(frozen=True)
+class ReportingConfig:
+    generate_plots: bool
+    output_formats: List[Literal["json", "markdown", "csv"]]
+    include_unfilled: bool
+
+
+# §2. Top-Level Configuration
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Config:
+    """The root configuration object, composing all nested sections."""
     run: RunConfig
     data: DataConfig
     universe: UniverseConfig
@@ -90,29 +110,75 @@ class Config(BaseModel):
     portfolio: PortfolioConfig
     reporting: ReportingConfig
 
-    @root_validator
-    def t0_is_within_data_range(cls, values: Dict) -> Dict:
-        run_cfg, data_cfg = values.get("run"), values.get("data")
-        if run_cfg and data_cfg:
-            if run_cfg.t0 <= data_cfg.start_date:
-                raise ValueError("run.t0 must be after data.start_date")
-            if run_cfg.t0 >= data_cfg.end_date:
-                raise ValueError("run.t0 must be before data.end_date")
-        return values
+
+# §3. Validation and Loading
+# --------------------------------------------------------------------------------------
+
+
+def _from_dict(data_class, data: Dict[str, Any]):
+    """Recursively creates nested dataclasses from a dictionary."""
+    if isinstance(data, dict):
+        field_types = {f.name: f.type for f in data_class.__dataclass_fields__.values()}
+        return data_class(**{
+            k: _from_dict(field_types.get(k), v) for k, v in data.items()
+        })
+    # Convert date strings to date objects
+    if isinstance(data, str) and data_class is date:
+        return date.fromisoformat(data)
+    # Convert path strings to Path objects
+    if isinstance(data, str) and data_class is Path:
+        return Path(data)
+    return data
+
+
+def _validate_config(cfg: Dict[str, Any]) -> None:
+    """
+    Performs simple, explicit validation checks on the raw config dictionary.
+    Fail fast on any logical inconsistencies.
+    """
+    if not isinstance(cfg, dict):
+        raise ValueError("Configuration must be a YAML object.")
+
+    # Date validation
+    run_t0 = date.fromisoformat(cfg["run"]["t0"])
+    data_start = date.fromisoformat(cfg["data"]["start_date"])
+    data_end = date.fromisoformat(cfg["data"]["end_date"])
+
+    if data_end <= data_start:
+        raise ValueError("data.end_date must be after data.start_date")
+
+    if not (data_start < run_t0 < data_end):
+        raise ValueError("run.t0 must be within the data start and end dates")
+
+    # Walk-forward validation
+    wf_config = cfg["walk_forward"]
+    total_wf_years = wf_config["is_years"] + wf_config["oos_years"]
+    if total_wf_years <= 0:
+        raise ValueError("Walk-forward years (is_years + oos_years) must be positive.")
+
+    # Add any other critical checks here.
 
 
 # impure
 def load_config(config_path: Path) -> Config:
-    """Load and validate YAML configuration file."""
+    """
+    Loads and validates a YAML configuration file into a Config object.
+    #impure: Reads from the filesystem.
+    """
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
     try:
         with config_path.open("r", encoding="utf-8") as f:
             raw_config = yaml.safe_load(f)
-        if not isinstance(raw_config, dict):
-            raise ValueError("Configuration must be a YAML object.")
-        return Config(**raw_config)
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Configuration file not found: {config_path}") from e
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e
-    except ValidationError as e:
-        raise ValueError(f"Configuration validation failed:\n{e}") from e
+
+    # Perform validation before trying to create the objects
+    _validate_config(raw_config)
+
+    # Convert the raw dictionary to nested dataclasses
+    try:
+        return _from_dict(Config, raw_config)
+    except (TypeError, KeyError) as e:
+        raise ValueError(f"Configuration validation failed: missing or invalid key. Details: {e}") from e
