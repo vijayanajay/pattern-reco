@@ -1,161 +1,146 @@
-# Requirements Document
+## **Requirements Document: SMA Crossover Signal Efficacy Analysis**
 
-## Introduction
+**Version:** 1.0
+**Date:** 2023-10-27
+**Author:** System (emulating K. Nadh & G. Hinton's mindset)
 
-This feature implements a CLI-only anomaly and pattern detection system specifically for Indian stocks (both large cap and small cap NSE-listed equities), following Kailash Nadh's philosophy of minimalism, testable increments, and walk-forward validation. The system identifies statistically grounded price patterns in NSE-listed equities that historically yield higher-than-market returns within ≤22 trading days, emphasizing parsimony, reproducibility, and out-of-sample survival.
+### **1. Introduction & Vision**
 
-## Kailash Nadh's 20 Hard Rules
+#### **1.1. Project Goal**
+To conduct a rigorous, empirical analysis of the short-term performance of Simple Moving Average (SMA) crossover signals on a curated list of Indian large-cap stocks over a 20-year period.
 
-1. **No complexity without proof**: Every feature must prove its worth in out-of-sample testing before inclusion
-2. **Minimal viable everything**: Start with the smallest working slice, measure, then iterate or kill
-3. **No lookahead bias ever**: Future data cannot influence past decisions under any circumstances
-4. **Deterministic reproducibility**: Same config + same data + same seed = identical results every time
-5. **Walk-forward validation only**: No cherry-picking time periods; rolling validation mimics reality
-6. **Parameter parsimony**: Maximum 3 parameters per detector; complexity is the enemy
-7. **Out-of-sample degradation tracking**: OOS/IS ratio must be ≥0.5 or the detector dies
-8. **Transaction costs are reality**: Model fees, slippage, and execution constraints or results are fantasy
-9. **Survivorship across multiple stocks**: Patterns must work on ≥5 liquid names or they're noise
-10. **Final holdout is sacred**: Last 2 years untouched until final sign-off; no peeking allowed
-11. **Frozen data snapshots**: Never refetch during backtests; snapshot once, diff on refresh
-12. **No technical indicators**: Pure OHLCV statistics only; no RSI, MACD, or other derived nonsense
-13. **Daily frequency minimum**: No intraday complexity; daily or higher timeframes only
-14. **Single position per stock**: No pyramiding, no averaging down; one bet per name at a time
-15. **Circuit breaker respect**: If market says no fill, accept it; no VWAP fallbacks or wishful thinking
-16. **Median over mean always**: Robust statistics resist outliers; means lie, medians tell truth
-17. **Pre-registered acceptance criteria**: Define success metrics before running; no post-hoc rationalization
-18. **Configuration drives everything**: Single YAML file controls entire pipeline; no hidden CLI flags
-19. **Audit trail mandatory**: Every run produces manifest with hashes, params, and git SHA
-20. **Kill failing detectors fast**: Two consecutive OOS failures = permanent retirement
+#### **1.2. Guiding Philosophy**
+This analysis is an exploratory experiment, not a backtest of a complete trading system. The core philosophy is to:
+*   **Embrace Simplicity (Nadh):** Use a basic, well-understood strategy (SMA crossover) and present findings in a clear, visually intuitive manner (heatmaps). Avoid unnecessary complexity.
+*   **Demand Statistical Rigor (Hinton):** Do not accept results at face value. Every observation must be tested for statistical significance (t-test, p-value) and consistency across different market conditions (time periods) and assets (stocks). The goal is to identify robust patterns, not random flukes.
 
-## Requirements
+#### **1.3. Scope**
+*   **In-Scope:** Data acquisition, signal generation for 10 pre-defined SMA pairs, analysis of post-signal returns and drawdowns over 3 fixed holding periods, statistical testing, benchmarking against buy-and-hold, and generation of specified outputs (CSV, Markdown report, PNG heatmaps).
+*   **Out-of-Scope:**
+    *   Developing a complete, tradable backtesting system (i.e., no sell signals, position sizing, or portfolio management).
+    *   Inclusion of transaction costs, slippage, or taxes.
+    *   Exhaustive parameter optimization (brute-forcing all possible X and Y values).
+    *   Use of any machine learning, neural networks, or complex predictive models.
+    *   Implementation of advanced risk management or market regime filters (e.g., NIFTY > 200d SMA).
 
-### Requirement 1: Configuration-Driven Pipeline
+---
 
-**User Story:** As a researcher, I want to define a single YAML configuration file that controls all aspects of data, universe selection, detector parameters, walk-forward splits, execution assumptions, portfolio rules, and reporting outputs, so that every run is completely reproducible with minimal CLI options and no hidden flags.
+### **2. System & Data Requirements**
 
-#### Acceptance Criteria
+#### **2.1. Environment**
+*   **Language:** Python 3.x
+*   **Core Libraries:**
+    *   `yfinance`: For downloading historical stock data.
+    *   `pandas`: For data manipulation and analysis.
+    *   `numpy`: For numerical operations.
+    *   `scipy`: Specifically `scipy.stats` for t-tests.
+    *   `matplotlib` & `seaborn`: For generating heatmap visualizations.
 
-1. WHEN a user provides a valid config.yaml file THEN the system SHALL execute the complete pipeline using only parameters from that file
-2. WHEN the config file contains run metadata (name, seed, output_dir) THEN the system SHALL use these values for deterministic execution and output organization
-3. WHEN the config specifies data parameters (source, interval, date ranges) THEN the system SHALL fetch and process data according to these specifications
-4. WHEN the config defines universe selection criteria THEN the system SHALL select stocks deterministically based on these rules
-5. WHEN the config contains detector parameters THEN the system SHALL apply these parameters with per-stock overrides if specified
-6. WHEN the config specifies walk-forward parameters THEN the system SHALL create splits according to these rules
-7. WHEN the config defines execution and portfolio rules THEN the system SHALL simulate trading according to these constraints
+#### **2.2. Data Source & Specifications**
+*   **Source:** Yahoo Finance.
+*   **Asset List (15 Tickers):**
+    1.  `RELIANCE.NS`
+    2.  `TCS.NS`
+    3.  `HDFCBANK.NS`
+    4.  `INFY.NS`
+    5.  `HINDUNILVR.NS`
+    6.  `ITC.NS`
+    7.  `LT.NS`
+    8.  `SBIN.NS`
+    9.  `BHARTIARTL.NS`
+    10. `SUNPHARMA.NS`
+    11. `TATAMOTORS.NS`
+    12. `TATASTEEL.NS`
+    13. `ASIANPAINT.NS`
+    14. `WIPRO.NS`
+    15. `YESBANK.NS` (The "Fallen Angel")
+*   **Time Period:** January 1, 2004, to December 31, 2023.
+*   **Price Data:** `Adj Close` (Adjusted Close) to account for dividends and stock splits.
 
-### Requirement 2: Data Management and Integrity
+---
 
-**User Story:** As a data pipeline, I want to snapshot yfinance data to parquet files with complete metadata and produce diff reports on refresh, so that historical backtests are never silently altered by upstream data changes.
+### **3. Functional Requirements (FR)**
 
-#### Acceptance Criteria
+**FR1: Data Acquisition and Preprocessing**
+*   **Description:** The system must download historical daily price data for the specified list of 15 tickers for the defined 20-year period. It must handle missing data points gracefully.
+*   **Details:**
+    *   Use `yfinance` to download data for all tickers.
+    *   Select only the `Adj Close` column for calculations.
+    *   Check for missing values (NaNs) in the downloaded data for each stock.
+    *   Apply a forward-fill (`ffill()`) method to populate sporadic NaNs.
+    *   The system must log a warning for each stock indicating how many NaN values were filled. This highlights potential data quality issues.
+*   **Definition of Done (DoD):** A function exists that, when given the list of tickers and date range, returns a single pandas DataFrame with tickers as columns and a `DatetimeIndex`, containing cleaned `Adj Close` prices. Warnings for filled NaNs are printed to the console.
 
-1. WHEN fetching data from yfinance THEN the system SHALL save raw data to parquet files with timestamp, timezone, interval, and source metadata
-2. WHEN a data refresh is requested THEN the system SHALL compare new data with existing snapshots and produce a detailed diff report
-3. WHEN data diffs exceed epsilon thresholds THEN the system SHALL freeze the old dataset for historical reproducibility
-4. WHEN loading data for backtests THEN the system SHALL use only frozen snapshots and never refetch during execution
-5. WHEN data integrity checks run THEN the system SHALL validate trading days against NSE calendar, check for splits/adjustments, and verify timezone alignment
-6. WHEN data is missing or corrupted THEN the system SHALL fail hard with clear error messages rather than proceeding with bad data
+**FR2: Time Period Segmentation**
+*   **Description:** The system must segment the 20-year dataset into four distinct 5-year periods for cohort analysis.
+*   **Details:** The data must be split into the following labeled periods:
+    *   `2004-01-01` to `2008-12-31`: "2004-2009 (Pre-Crisis Bull Market & Crash)"
+    *   `2009-01-01` to `2013-12-31`: "2009-2014 (Post-Crisis Recovery)"
+    *   `2014-01-01` to `2018-12-31`: "2014-2019 (Modi-Era Bull Run)"
+    *   `2019-01-01` to `2023-12-31`: "2019-2024 (COVID Volatility & New Highs)"
+*   **DoD:** The main analysis loop iterates through these four distinct, labeled data slices. All subsequent calculations and reports are grouped by these periods.
 
-### Requirement 3: Walk-Forward Validation Framework
+**FR3: Strategy Signal Generation**
+*   **Description:** For each stock and each time period, the system must calculate SMAs and identify "golden cross" buy signals.
+*   **Details:**
+    *   **SMA Pairs (X, Y):** The system will iterate through the following 10 pre-defined pairs: `(10, 20), (20, 50), (50, 100), (50, 150), (50, 200), (100, 200), (10, 50), (20, 100), (20, 200), (100, 150)`.
+    *   **Signal Condition:** A buy signal is generated on day `T` if `SMA_X[T] > SMA_Y[T]` AND `SMA_X[T-1] <= SMA_Y[T-1]`.
+    *   **Signal Uniqueness:** This condition inherently ensures only the first day of a crossover is registered as a signal, preventing repeated signals while the short SMA remains above the long SMA.
+*   **DoD:** A function exists that takes a stock's price series and an (X, Y) pair, and returns a list of dates on which a buy signal occurred.
 
-**User Story:** As a backtester, I want to perform deterministic rolling walk-forward splits with 3-year in-sample periods, 1-year out-of-sample periods, and a final 2-year holdout, so that validation is honest and prevents any form of lookahead bias.
+**FR4: Post-Signal Performance Calculation**
+*   **Description:** For each generated signal, the system must calculate the forward returns and maximum drawdown for fixed holding periods without look-ahead bias.
+*   **Details:**
+    *   **Holding Periods:** 10, 15, and 20 trading days.
+    *   **Entry Price:** The `Adj Close` price on the day of the signal (`T`).
+    *   **Return Calculation:** For a holding period of `N` days, Return = `(Price[T+N] - Price[T]) / Price[T]`.
+    *   **Max Drawdown Calculation:** For a holding period of `N` days, the drawdown is calculated *from the entry price*. Max Drawdown = `(Lowest Price in [T+1, T+N] - Price[T]) / Price[T]`. This will always be a negative number or zero.
+    *   **Edge Case Handling:** If a signal occurs such that the holding period (e.g., 20 days) extends beyond the available data for that time segment, that signal is discarded for that specific holding period calculation.
+*   **DoD:** For every signal, a record is created containing the signal date, entry price, and the calculated returns and max drawdowns for 10, 15, and 20-day holding periods.
 
-#### Acceptance Criteria
+**FR5: Aggregation and Statistical Analysis**
+*   **Description:** The system must aggregate the results of all signals for each unique combination of (Stock, Time Period, SMA Pair, Holding Period) and compute a set of summary metrics.
+*   **Details:** For each group, the following metrics must be calculated:
+    1.  **Number of Signals:** Total count of valid signals.
+    2.  **Mean Return:** Average of all calculated returns.
+    3.  **Std. Dev. of Returns:** Standard deviation of all calculated returns.
+    4.  **Mean Max Drawdown:** Average of all calculated max drawdowns.
+    5.  **Win Rate:** Percentage of signals where the return was `> 0`.
+    6.  **P-Value:** The p-value from a one-sample t-test (`scipy.stats.ttest_1samp`) comparing the distribution of returns against a population mean of 0.
+*   **DoD:** A structured dataset (e.g., a pandas DataFrame) is created where each row represents a unique combination of the grouping keys and contains all the calculated metrics.
 
-1. WHEN creating walk-forward splits THEN the system SHALL use 3-year in-sample and 1-year out-of-sample periods with annual rolling
-2. WHEN fitting detector parameters THEN the system SHALL use only in-sample data and freeze parameters for out-of-sample testing
-3. WHEN the final 2-year holdout period is defined THEN the system SHALL never use this data for any fitting or parameter selection
-4. WHEN calendar alignment is enabled THEN the system SHALL align split boundaries with trading calendar dates
-5. WHEN walk-forward validation completes THEN the system SHALL track OOS/IS performance ratios for each detector and stock combination
-6. WHEN a detector shows OOS/IS ratio < 0.5 THEN the system SHALL flag it for potential retirement
+**FR6: Buy-and-Hold Benchmark Calculation**
+*   **Description:** The system must calculate the simple buy-and-hold return for each stock within each of the four 5-year time periods to serve as a baseline for comparison.
+*   **Details:** For each stock and each period, the return is calculated as `(Last Day's Price - First Day's Price) / First Day's Price`.
+*   **DoD:** The buy-and-hold return for every stock and every 5-year period is calculated and stored for inclusion in the final report.
 
-### Requirement 4: Execution Simulation with Realistic Constraints
+**FR7: Output Generation - CSV Files**
+*   **Description:** The system must save the detailed aggregated results into a comprehensive CSV file.
+*   **Details:**
+    *   A single CSV file named `sma_crossover_analysis_results.csv` will be generated.
+    *   **Columns:** `Stock`, `Period_Label`, `Short_SMA`, `Long_SMA`, `Holding_Period`, `Num_Signals`, `Mean_Return`, `Std_Dev_Return`, `Mean_Max_Drawdown`, `Win_Rate`, `P_Value`.
+*   **DoD:** The specified CSV file is created in the output directory and is readable by standard spreadsheet software.
 
-**User Story:** As an executor, I want to simulate next-open fills with circuit guards and parameterized slippage models while logging all unfilled signals, so that backtest results reflect real-world tradeability constraints.
+**FR8: Output Generation - Heatmap Visualization**
+*   **Description:** The system must generate and save a heatmap visualizing the performance of the SMA pairs.
+*   **Details:**
+    *   A heatmap will be generated showing the **average Mean Return across ALL stocks and ALL time periods** for each of the 10 SMA pairs.
+    *   **X-axis:** Short SMA period (X).
+    *   **Y-axis:** Long SMA period (Y).
+    *   **Color:** The color of each cell will represent the average Mean Return. A divergent colormap (e.g., `RdYlGn`) should be used.
+    *   **Appearance:** The heatmap will be sparse, only showing cells for the 10 tested (X, Y) combinations. This is the intended behavior.
+    *   **File:** The plot must be saved as a high-resolution PNG file named `heatmap_avg_mean_return.png`.
+*   **DoD:** The specified PNG file is created in the output directory and clearly visualizes the performance landscape of the tested SMA pairs.
 
-#### Acceptance Criteria
+**FR9: Output Generation - Markdown Summary Report**
+*   **Description:** The system must generate a single text/markdown file that synthesizes the findings in a human-readable format.
+*   **Details:** The report, named `analysis_summary.md`, must contain:
+    1.  **Executive Summary:** A brief overview of the project's goal and key findings.
+    2.  **Overall Performance Heatmap:** The generated heatmap image embedded or referenced.
+    3.  **Consistency Analysis:** A section discussing which, if any, (X, Y) parameter regions showed consistent profitability across multiple stocks and time periods. Highlight parameters with both positive mean returns and low p-values (< 0.05).
+    4.  **Top Performers:** A small table showing the top 5 best-performing combinations (Stock, Period, SMA Pair, Holding Period) based on Mean Return, provided the p-value is significant.
+    5.  **The "Fallen Angel" Case (YESBANK.NS):** A specific analysis of how the SMA strategies performed on Yes Bank, particularly during its period of collapse, to serve as a cautionary tale against strategy over-fitting.
+    6.  **Benchmark Comparison:** A summary comparing the strategy's mean returns to the buy-and-hold returns for the corresponding periods.
+    7.  **Signal Frequency Analysis:** A brief comment on which SMA pairs generated the most and fewest signals.
+*   **DoD:** A well-formatted `analysis_summary.md` file is generated containing all the specified sections.
 
-1. WHEN a signal is generated THEN the system SHALL attempt to fill at the next trading day's open price
-2. WHEN the next open price is outside the circuit guard range (±10% of previous close) THEN the system SHALL mark the trade as unfilled and log the reason
-3. WHEN calculating slippage THEN the system SHALL apply the gap percentile model with turnover adjustments and minimum floors
-4. WHEN applying transaction costs THEN the system SHALL add both fees (default 10 bps per side) and calculated slippage to each trade
-5. WHEN a signal cannot be filled THEN the system SHALL log the unfilled signal with timestamp, reason, and attempted price
-6. WHEN re-entry is attempted THEN the system SHALL respect lockout rules and not allow new positions until current position is closed
-
-### Requirement 5: Portfolio Management and Position Sizing
-
-**User Story:** As a portfolio allocator, I want to enforce maximum concurrent positions with deterministic selection rules based on signal extremity, turnover, and ticker alphabetical order, so that capacity constraints and tie-breaking are explicit and reproducible.
-
-#### Acceptance Criteria
-
-1. WHEN multiple signals are generated simultaneously THEN the system SHALL select positions using the deterministic ordering: signal extremity descending, turnover descending, ticker ascending
-2. WHEN the maximum concurrent position limit is reached THEN the system SHALL reject additional signals and log them as capacity-constrained
-3. WHEN weighting positions THEN the system SHALL use equal weighting (1/N) across all concurrent positions
-4. WHEN a position exits THEN the system SHALL immediately make capacity available for new signals
-5. WHEN re-entry lockout is enabled THEN the system SHALL prevent new positions in the same stock until the lockout period expires
-6. WHEN position limits change THEN the system SHALL apply new limits only to future signals, not existing positions
-
-### Requirement 6: Gap-Z Detector Implementation
-
-**User Story:** As a detector, I want to compute Gap-Z signals with maximum 3 parameters (window, threshold, max_hold) and per-stock parameter fitting on in-sample data only, so that complexity is minimized and out-of-sample evaluation is clean.
-
-#### Acceptance Criteria
-
-1. WHEN calculating gap percentages THEN the system SHALL compute (Open_t - Close_{t-1}) / Close_{t-1} for each trading day
-2. WHEN computing z-scores THEN the system SHALL use rolling mean and standard deviation over the specified window parameter
-3. WHEN the z-score falls below the k_low threshold THEN the system SHALL generate a long entry signal
-4. WHEN parameter fitting on in-sample data THEN the system SHALL test window values [20, 60], k_low values [-1.0, -1.5, -2.0], and max_hold ≤ 22 days
-5. WHEN selecting optimal parameters THEN the system SHALL choose the combination that maximizes median trade return post-costs with minimum hit-rate requirements
-6. WHEN parameters are fitted THEN the system SHALL freeze them for all out-of-sample and holdout testing
-
-### Requirement 7: Universe Selection and Management
-
-**User Story:** As a universe selector, I want to deterministically select the top N stocks by median daily turnover at backtest start (t0) and freeze this list for the entire backtest, so that survivorship bias is controlled and selection is transparent.
-
-#### Acceptance Criteria
-
-1. WHEN selecting universe at t0 THEN the system SHALL compute median daily turnover (Close * Volume in INR) over the trailing 2 years for all available NSE tickers including both large cap and small cap stocks
-2. WHEN ranking stocks THEN the system SHALL select the top N stocks (default 10) by median turnover value from the combined large cap and small cap universe
-3. WHEN the universe is selected THEN the system SHALL freeze this list for the entire backtest period and document it in the run manifest
-4. WHEN exclusion lists are provided THEN the system SHALL remove specified tickers (e.g., ASM/GSM) from consideration
-5. WHEN survivorship limitations exist THEN the system SHALL document the inability to include delisted stocks where yfinance data is unavailable
-6. WHEN universe selection completes THEN the system SHALL log the exact list with turnover statistics and selection criteria
-
-### Requirement 8: Comprehensive Reporting and Audit Trail
-
-**User Story:** As a reporter, I want to emit trade ledgers, unfilled signal logs, summary JSON/MD reports, and a complete run manifest with hashes and configuration, so that every result is fully auditable and reproducible.
-
-#### Acceptance Criteria
-
-1. WHEN trades are executed THEN the system SHALL log timestamps, entry/exit prices, fees, slippage, notional amounts, PnL, and holding duration to a CSV trade ledger
-2. WHEN signals cannot be filled THEN the system SHALL log unfilled signals with timestamps, reasons, and attempted prices to a separate CSV file
-3. WHEN generating summary reports THEN the system SHALL create both JSON and Markdown formats with per-detector, per-stock IS vs OOS metrics
-4. WHEN creating the run manifest THEN the system SHALL include data file hashes, universe list, walk-forward split dates, parameter grids, cost models, random seed, and git SHA
-5. WHEN optional plots are requested THEN the system SHALL generate equity curves, drawdown charts, PnL histograms, and calibration plots to the plots directory
-6. WHEN the run completes THEN the system SHALL organize all outputs under the specified output_dir with consistent naming conventions
-
-### Requirement 9: Performance Metrics and Evaluation
-
-**User Story:** As a reviewer, I want to see per-stock out-of-sample medians, lower-tail returns, hit rates, OOS/IS degradation ratios, and portfolio metrics against benchmarks in the generated report, so that I can make informed go/no-go decisions quickly.
-
-#### Acceptance Criteria
-
-1. WHEN calculating per-stock metrics THEN the system SHALL compute median trade return post-costs, 5th percentile trade return, and hit rate for each stock and time period
-2. WHEN evaluating detector performance THEN the system SHALL track Sharpe ratios, maximum drawdown, and OOS/IS performance ratios
-3. WHEN aggregating portfolio metrics THEN the system SHALL compute equal-weighted returns across concurrent positions with maximum concurrent position limits
-4. WHEN comparing to benchmarks THEN the system SHALL calculate performance against stock buy-and-hold and NIFTY baseline over the same time windows
-5. WHEN assessing robustness THEN the system SHALL verify that signals persist across ≥5 liquid names and ≥3 walk-forward rolls
-6. WHEN generating final evaluation THEN the system SHALL clearly indicate pass/fail status against pre-registered acceptance thresholds
-
-### Requirement 10: CLI Interface and Command Structure
-
-**User Story:** As a user, I want a minimal CLI with only two commands - run and refresh-data - that accept only a config file path with no additional options, so that the interface is extremely simple and all complexity is contained within the configuration file.
-
-#### Acceptance Criteria
-
-1. WHEN running the main pipeline THEN the system SHALL accept only `python cli.py run --config path/to/config.yaml` with absolutely no additional CLI flags or options
-2. WHEN refreshing data THEN the system SHALL accept only `python cli.py refresh-data --config path/to/config.yaml` for optional data updates with no additional CLI options
-3. WHEN invalid commands are provided THEN the system SHALL display clear usage instructions and exit with appropriate error codes
-4. WHEN config file is missing or invalid THEN the system SHALL provide specific error messages about what is wrong
-5. WHEN commands execute successfully THEN the system SHALL provide progress updates and final status messages
-6. WHEN errors occur during execution THEN the system SHALL log detailed error information and exit gracefully
