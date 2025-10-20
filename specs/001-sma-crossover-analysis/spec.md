@@ -246,7 +246,7 @@ Additionally:
 
 ## Run contract (API / CLI schema)
 
-This project exposes a simple run contract for implementers. The run may be invoked via a Python API or a CLI script that accepts the inputs below and writes the outputs described.
+This project exposes a simple run contract for implementers. The run may be invoked via a Python API or a CLI script that is configuration-driven (reads `config.yaml`) and writes the outputs described.
 
 - Inputs:
 

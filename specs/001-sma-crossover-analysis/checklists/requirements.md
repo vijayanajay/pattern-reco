@@ -57,3 +57,7 @@
 
 - The spec refers to `yfinance`, `pandas`, `numpy`, `scipy`, `matplotlib`, and `seaborn` in the original requirements document; the spec itself avoids implementation details but it's acceptable to mention required environment in a separate implementation plan.
 - Recommend adding an explicit acceptance criterion for the CSV and PNG file locations and naming conventions if stricter naming is required.
+
+Additional operational note:
+
+- The CLI is configuration-first: runtime inputs are supplied via `config.yaml` or a path provided in the `SMA_CONFIG` environment variable. The CLI should run with no command-line arguments reading configuration from that file. Add this to acceptance criteria if needed.
