@@ -48,6 +48,8 @@ R-001 (FR-001) — Data Acquisition & Preprocessing
    - T-001.2: Implement downloader with retry/backoff and per-ticker diagnostics.
    - T-001.3: Implement cleaning pipeline (forward-fill, percent-missing check, warmup counting).
    - T-001.4: Add unit tests + integration smoke test for download + clean.
+  
+  Covered by tasks: T007, T041, T032, T024
  - Code artifacts (proposed):
    - `src/sma_analysis/data.py`
      - function: `download_tickers(tickers: list[str], start: str, end: str, provider: str = "yfinance") -> dict[str, polars.DataFrame]`
@@ -74,6 +76,8 @@ R-002 (FR-002) — Time Period Segmentation (cohorts)
  - Tasks:
    - T-002.1: Implement deterministic cohort generator.
    - T-002.2: Tests validating signal assignment to cohorts and forward-return behavior across boundaries.
+  
+  Covered by tasks: T014, T023
  - Code artifacts (proposed):
    - `src/sma_analysis/utils.py`
      - function: `generate_cohorts(start_date, end_date, cohort_length_years=5) -> list[tuple[str,str,str]]` (returns list of (label,start,end))
@@ -98,6 +102,8 @@ R-003 (FR-003) — Signal Generation
    - T-003.2: Implement signal detector using T & T-1 comparisons.
    - T-003.3: Implement overlap-mode handling (`overlapping` vs `non_overlapping`).
    - T-003.4: Unit tests for SMA calculation and signal detection edge cases.
+  
+  Covered by tasks: T015, T016, T037, T036
  - Code artifacts (proposed):
    - `src/sma_analysis/signals.py`
      - function: `compute_sma(series: polars.Series, window: int) -> polars.Series`
@@ -122,6 +128,8 @@ R-004 (FR-004) — Post-Signal Performance (forward returns & drawdown)
  - Tasks:
    - T-004.1: Implement `compute_forward_returns_and_drawdown(signal_records, holding_periods)`.
    - T-004.2: Tests for boundary discards and drawdown correctness.
+  
+  Covered by tasks: T017, T018, T023
  - Code artifacts (proposed):
    - `src/sma_analysis/metrics.py`
      - function: `compute_forward_outcomes(series: polars.Series, signal_dates: list[date], holding_periods: list[int]) -> DataFrame[SignalRecord]`
@@ -149,6 +157,8 @@ R-005 (FR-005) — Aggregation & Stats
    - T-005.2: Implement p-value calculation and bootstrap CI (1000 resamples, seed=42).
    - T-005.3: Implement BH-FDR wrapper using `statsmodels` if available, fall back to builtin deterministic implementation.
    - T-005.4: Tests for aggregation sentinel rows, small-sample logic, BH-FDR parity tests.
+  
+  Covered by tasks: T019, T020, T021, T038, T035
  - Code artifacts (proposed):
    - `src/sma_analysis/aggregate.py`
      - function: `aggregate_signals(signal_outcomes_df: polars.DataFrame, holding_periods: list[int], bh_backend: str) -> polars.DataFrame`
@@ -177,6 +187,8 @@ R-006 (FR-006) — Buy-and-Hold Benchmark
  - Tasks:
    - T-006.1: Add buy-and-hold computation into aggregation pipeline.
    - T-006.2: Test buy-and-hold correctness on sample series.
+  
+  Covered by tasks: T039
  - Code artifacts:
    - `src/sma_analysis/aggregate.py` (function: `compute_buy_and_hold(series, start, end) -> float`)
  - Test artifacts:
@@ -193,6 +205,8 @@ R-007 (FR-007) — CSV Output (schema)
  - Tasks:
    - T-007.1: Implement CSV writer honoring column order, sentinel rules for numeric NaNs and textual `NA` sentinel when appropriate.
    - T-007.2: Add unit/integration test ensuring header parity with `contracts/csv-schema.md`.
+  
+  Covered by tasks: T019, T038, T040
  - Code artifacts:
    - `src/sma_analysis/io.py`
      - function: `write_canonical_csv(df: polars.DataFrame, path: str, schema_contract_path: str) -> None`
@@ -213,6 +227,8 @@ R-008 (FR-008) — Heatmap Visualization
  - Tasks:
    - T-008.1: Implement heatmap generator with masking for missing combos and weighted/unweighted options.
    - T-008.2: Tests verifying files created and basic numeric checks on heatmap matrix.
+  
+  Covered by tasks: T025, T026, T027
  - Code artifacts:
    - `src/sma_analysis/viz.py`
      - function: `plot_heatmap(aggregated_df, holding_period, weighted=False, out_path: str)`
@@ -230,6 +246,8 @@ R-009 (FR-009) — Markdown Summary Report
  - Tasks:
    - T-009.1: Implement report writer assembling sections from run artifacts.
    - T-009.2: Test that summary includes required subsections and references.
+  
+  Covered by tasks: T028, T029, T030
  - Code artifacts:
    - `src/sma_analysis/report.py`
      - function: `write_analysis_summary(aggregated_csv_path, heatmap_paths, diagnostics_path, out_md_path, manifest)`
@@ -249,6 +267,8 @@ R-010 (NFR-001) — Performance Target
  - Tasks:
    - T-010.1: Add optional batching/workers to CLI (config keys `batch_size`, `workers`).
    - T-010.2: Profile critical paths and add `polars.set_num_threads()` guidance for worker processes.
+  
+  Covered by tasks: T043, T033
  - Code artifacts:
    - `src/sma_analysis/cli.py` (worker orchestration and config parsing)
  - Test artifacts:
@@ -263,6 +283,8 @@ R-011 (NFR-002) — Data Engine (polars)
    - `run_manifest` includes `polars` version and python version.
  - Tasks:
    - T-011.1: Add runtime environment capture utility used by manifest writer.
+  
+  Covered by tasks: T022, T031
  - Code artifacts:
    - `src/sma_analysis/manifest.py` (function: `write_run_manifest(config, out_path)`)
  - Test artifacts:
@@ -276,6 +298,8 @@ R-012 (NFR-003) — Version Pinning & Reproducibility Policy
  - Tasks:
    - T-012.1: Add step in CLI run to call `pip freeze` (or equivalent) and write exact requirements. On Windows use `python -m pip freeze | sort > outputs\requirements_exact_{RUN_TS}.txt`.
    - T-012.2: Add manifest writer to record `requirements_file` and `requirements_exact_file`.
+  
+  Covered by tasks: T045, T022
  - Code artifacts:
    - `src/sma_analysis/manifest.py` (integrates with CLI)
  - Test artifacts:
@@ -300,6 +324,8 @@ R-013 (NFR-004) — Scalability & Processing Strategy
  - Tasks:
    - T-013.1: Implement batch processing orchestration in `cli.py` with worker pool.
    - T-013.2: Add unit/integration test for batch merge correctness.
+  
+  Covered by tasks: T043, T044
  - Code artifacts:
    - `src/sma_analysis/cli.py` (orchestrator)
  - Test artifacts:
@@ -315,6 +341,8 @@ R-014 (CLI Contract)
  - Tasks:
    - T-014.1: Implement CLI entrypoint, config validation, exception-to-exit-code mapping.
    - T-014.2: Tests for exit codes using subprocess calls or function-level wrappers.
+  
+  Covered by tasks: T011, T036, T042
  - Code artifacts:
    - `src/sma_analysis/cli.py`
      - function: `main()` and `run_analysis(config)` (programmatic API)
