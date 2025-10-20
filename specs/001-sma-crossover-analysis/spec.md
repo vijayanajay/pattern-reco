@@ -79,14 +79,15 @@ Derived and formalized from `doc/requirements.md`.
 
 ### Functional Requirements
 
-- **FR-001 (Data Acquisition & Preprocessing)**: Given a list of tickers and date range, system MUST download daily `Adj Close` prices, forward-fill sporadic NaNs, and return a pandas DataFrame indexed by date with tickers as columns. The system MUST log a warning per ticker with the count of NaNs filled.
+ - **FR-001 (Data Acquisition & Preprocessing)**: Given a list of tickers and date range, system MUST download daily `Adj Close` prices, forward-fill sporadic NaNs, and return a polars DataFrame indexed by date with tickers as columns. The system MUST log a warning per ticker with the count of NaNs filled.
+
+	- Download resilience: implement per-ticker download retries with exponential backoff (3 attempts, max wait ~30s). If a ticker still fails after retries, the run SHOULD log a warning entry in `outputs/logs/download_failures_{RUN_TS}.csv` and continue processing remaining tickers. The final `run_manifest` MUST list any skipped tickers and the reason (e.g., "download_failed_after_retries").
 
 	- Implementation details and guardrails:
 		- Forward-fill is applied per-ticker; after forward-fill, if more than 10% of dates for a ticker in a period remain missing (or were NaN before forward-fill), that ticker-period pair MUST be flagged in outputs and may be excluded from some summaries (see `Low_Power_Flag`).
 		- SMA computation requires a full rolling window: use rolling(window=period, min_periods=period) so rows before the long SMA window exists are dropped for signal-generation purposes and logged. Log counts of dropped/WARM-UP rows per ticker.
 		- All warnings and per-ticker diagnostic summaries MUST be written to `outputs/logs/na_fill_warnings.csv` and `outputs/logs/warmup_drop_counts.csv`.
 
-- **FR-002 (Time Period Segmentation)**: System MUST slice the 2004-01-01 to 2023-12-31 range into four labeled periods: `2004-2009 (Pre-Crisis Bull Market & Crash)`, `2009-2014 (Post-Crisis Recovery)`, `2014-2019 (Modi-Era Bull Run)`, `2019-2024 (COVID Volatility & New Highs)`. All downstream analysis MUST iterate over these slices.
  - **FR-002 (Time Period Segmentation)**: System MUST slice the 2004-01-01 to 2023-12-31 range into four non-overlapping 5-year cohorts using inclusive start/end dates. The cohorts are:
 
 	- `2004-01-01` to `2008-12-31` (Pre-Crisis Bull Market & Crash)
@@ -129,6 +130,18 @@ Derived and formalized from `doc/requirements.md`.
 
 			- For each holding period separately (10, 15, 20 days), collect the flattened set of aggregated rows (Stock, Period_Label, Short_SMA, Long_SMA) with `Num_Signals_Used >= 5` and compute BH-FDR adjusted p-values. Record the result in the `Adj_P_Value_BH` column. Rows with `Num_Signals_Used < 5` must have `Adj_P_Value_BH = NA`.
 
+		- Handling zero/empty-signal groups: If an aggregated group (Stock, Period_Label, Short_SMA, Long_SMA, Holding_Period) has zero detected signals or if all detected signals were discarded for insufficient forward data, the canonical CSV MUST still include the row with sentinel values to preserve provenance and enable downstream pipelines to operate deterministically. Required sentinel values:
+
+			- `Num_Signals = 0`
+			- `Num_Signals_Used = 0`
+			- `Low_Power_Flag = TRUE`
+			- `P_Value = NA`
+			- `Adj_P_Value_BH = NA`
+			- `Mean_CI_lower = NA`, `Mean_CI_upper = NA`
+			- `Notes = "no_signals"`
+
+		  Implementations MUST ensure these rows are present in the canonical `outputs/sma_crossover_analysis_results_{RUN_TS}.csv` so audit logs and heatmap pipelines can explicitly filter or mask them (rather than failing on missing rows).
+
 - **FR-006 (Buy-and-Hold Benchmark)**: For each stock and period, system MUST compute buy-and-hold return = (Last - First)/First and include this in the final report aggregation.
 
 
@@ -144,7 +157,6 @@ Derived and formalized from `doc/requirements.md`.
 - **FR-008 (Heatmap Visualization)**: System MUST create `heatmap_avg_mean_return.png` that visualizes the average Mean_Return across all stocks and periods for each tested SMA pair using a divergent colormap and clearly labeled axes.
 
 	- Aggregation and output rules:
-	- Aggregation and output rules:
 		- Heatmap primary cell value = unweighted mean of `Mean_Return` across all (Stock, Period_Label) aggregated rows for that SMA pair and holding period. Also produce a weighted heatmap where each cell is weighted by `Num_Signals_Used` to reflect sample size.
 		- Heatmaps MUST be produced per holding period (10, 15, 20) by default. A separate aggregated heatmap across holding periods may be generated on demand; such aggregation must be explicitly captioned.
 		- Heatmap axes: x-axis = Short_SMA, y-axis = Long_SMA. Because the tested SMA pairs form an explicit list (not necessarily a full Cartesian grid), cells for Short/Long combinations that were not tested must be masked (greyed out) and annotated in the caption as "not tested". Each heatmap must use a divergent colormap centered at 0% mean return and include a colorbar and cell annotations when feasible.
@@ -153,11 +165,11 @@ Derived and formalized from `doc/requirements.md`.
 - **FR-009 (Markdown Summary Report)**: System MUST write `analysis_summary.md` containing Executive Summary, Heatmap reference, Consistency Analysis (highlight parameter regions with positive mean returns and p-value < 0.05), Top Performers (top 5 significant rows), Fallen Angel analysis for `YESBANK.NS`, Benchmark Comparison, and Signal Frequency Analysis.
 
 	- The report MUST include:
-		- A reproducibility header listing versions of key libraries (pandas, numpy, scipy, matplotlib, seaborn, python) and the RNG seed used.
+		- A reproducibility header listing versions of key libraries (polars, numpy, scipy, matplotlib, seaborn, python) and the RNG seed used.
 		- The Overlap_Mode and Entry_Mode used for the run.
 		- A section on multiple-testing correction describing the BH-FDR procedure and which rows were included/excluded.
 		- Fallen Angel (`YESBANK.NS`) subsection: include a time-series PNG (`outputs/yesbank_signals.png`) with signals annotated, a small table of each signal (SignalDate, EntryPrice, Return_10/15/20, Max_Drawdown_10/15/20), a note on data truncation and number of usable signals, and whether any p-values remain significant after FDR correction.
-		- A reproducibility header listing versions of key libraries (pandas, numpy, scipy, matplotlib, seaborn, python), the RNG seed used, and the git commit hash and branch used for the run.
+		- A reproducibility header listing versions of key libraries (polars, numpy, scipy, matplotlib, seaborn, python), the RNG seed used, and the git commit hash and branch used for the run.
 		- The Overlap_Mode and Entry_Mode used for the run. Defaults: `Overlap_Mode` = `overlapping` (count signals independently) and `Entry_Mode` = `entry_on_T` (use cleaned Adj Close on T). These defaults must be written to the run manifest.
 		- A section on multiple-testing correction describing the BH-FDR procedure and which rows were included/excluded.
 		- Fallen Angel (`YESBANK.NS`) subsection: include a time-series PNG (`outputs/yesbank_signals.png`) with signals annotated, a small table of each signal (SignalDate, EntryPrice, Return_10/15/20, Max_Drawdown_10/15/20), a note on data truncation and number of usable signals, and whether any p-values remain significant after FDR correction.
@@ -174,7 +186,7 @@ Derived and formalized from `doc/requirements.md`.
 
 ### Measurable Outcomes
 
-- **SC-001**: Data function returns a cleaned DataFrame for all 15 tickers with no NaNs remaining after forward-fill and per-ticker NaN fill warnings printed.
+- **SC-001**: Data function returns a cleaned polars DataFrame for all 15 tickers with no NaNs remaining after forward-fill and per-ticker NaN fill warnings printed.
 - **SC-002**: For each of the 10 SMA pairs and 3 holding periods, aggregated CSV contains rows for each stock-period combination; no required row is missing unless there were zero signals.
 - **SC-003**: Heatmap PNG is produced at 300 DPI resolution and shows cells for all 10 SMA pairs; the color scale is centered at 0% mean return.
 - **SC-004**: The t-test P_Value is computed for every aggregated row; rows with Num_Signals < 5 should be flagged in the CSV as low-power (inspectable).
@@ -199,6 +211,38 @@ Additionally:
 - The run MUST write the `outputs/logs` folder with `na_fill_warnings.csv` and `warmup_drop_counts.csv` and include a timestamped `run_manifest_{YYYYMMDD_HHMMSS}.json` listing parameters (SMA pairs, date range, Overlap_Mode, Entry_Mode, RNG seed, library versions, git commit, git branch, OS). The default filenames for main outputs must include a timestamp (e.g., `outputs/sma_crossover_analysis_results_{YYYYMMDD_HHMMSS}.csv`).
 
 ## Assumptions
+
+## Non-Functional Requirements
+
+- **NFR-001 (Performance Target)**: A full analysis run for the canonical configuration (≈15 tickers, 10 SMA pairs, 3 holding periods, 2004-01-01 to 2023-12-31) SHOULD complete within 30 minutes on a typical developer laptop (4 cores, 16GB RAM). This target guides implementation choices: prefer vectorized operations, use `polars` for DataFrame processing, and add optional parallelism where safe.
+
+- **NFR-002 (Data Engine)**: `polars` is the primary DataFrame engine for this analysis. Implementations MUST provide a compatibility layer or clear docs if `pandas` interoperability is required for downstream tools. The `run_manifest` MUST record the data engine and version used.
+
+- **NFR-003 (Version Pinning & Reproducibility Policy)**: Use a mixed pinning policy to balance reproducibility and flexibility:
+
+	- Critical numeric libraries that materially affect results MUST be pinned exactly in `requirements.txt`/`pyproject.toml` (e.g., `polars==<version>`, `numpy==<version>`, `scipy==<version>`, and the `python` minor version). Exact pins ensure numeric reproducibility for statistical tests and bootstraps.
+
+	- Ancillary tooling and visualization libraries MAY use minimum-version specifiers (e.g., `matplotlib>=<min_version>`, `seaborn>=<min_version>`). This allows minor non-breaking updates while keeping core numeric behavior reproducible.
+
+	- The `run_manifest_{RUN_TS}.json` MUST record the exact resolved versions used for the run (package name and version), the Python executable path and version, and the git commit hash/branch. Example manifest fields:
+
+		- `python_version`, `python_executable`
+		- `packages`: {`polars`: "x.y.z", `numpy`: "a.b.c", `scipy`: "p.q.r", `matplotlib`: "m.n.o", ...}
+		- `git_commit`, `git_branch`
+
+	- Provide an automated helper (script or Makefile task) that exports the exact environment used into `requirements_exact_{RUN_TS}.txt` (e.g., via `pip freeze` in a controlled venv) and include that file alongside the run artifacts for long-term reproducibility.
+
+	- Rationale: exact pins for numeric libs prevent subtle behavior changes in statistical functions and rolling-window calculations; minimums for non-numeric tooling reduce friction for visualization/drivers that tolerate minor updates.
+
+	- **NFR-004 (Scalability & Processing Strategy)**: Default processing strategy is in-memory `polars` DataFrames with optional chunking/sharding for larger runs. Implementation notes:
+
+		- Target scale for default mode: up to ~200 tickers and the canonical SMA set (10 pairs) on a machine with 4-8 cores and 16-32GB RAM. This keeps developer UX simple and fast.
+
+		- For larger datasets (100+ tickers or custom grids), implement chunked processing: split the ticker list into batches, process each batch independently (download → clean → signal generation → aggregation), write intermediate per-batch CSVs, and final-merge aggregated results. This approach reduces peak memory and allows parallel batch execution.
+
+		- Provide a `--batch-size`/`--workers` CLI option to control chunk size and parallel workers. Default: `--batch-size=50`, `--workers=4`.
+
+		- Document migration notes for moving to distributed execution (e.g., Polars on Ray, or Dask) in `docs/scaling.md` and provide adapter hooks where IO and aggregation steps can be swapped for distributed implementations.
 
 ## Run contract (API / CLI schema)
 
@@ -225,21 +269,39 @@ This project exposes a simple run contract for implementers. The run may be invo
 	- `outputs/analysis_summary_{RUN_TS}.md` and any focal ticker PNGs (e.g., `outputs/yesbank_signals_{RUN_TS}.png`).
 	- `outputs/run_manifest_{RUN_TS}.json` containing inputs, environment (library versions), git commit/branch, OS, and timestamps.
 
+Run-time requirements export (implementation note):
+
+- The run MUST include the repository `requirements.txt` alongside run artifacts and MUST export the exact resolved environment into `outputs/requirements_exact_{RUN_TS}.txt`. The recommended command (POSIX) to export exact versions during a run is:
+
+```sh
+pip freeze | sort > outputs/requirements_exact_${RUN_TS}.txt
+```
+
+On Windows (cmd.exe) the equivalent command is:
+
+```bat
+python -m pip freeze | sort > outputs\requirements_exact_{RUN_TS}.txt
+```
+
+- The `run_manifest_{RUN_TS}.json` MUST include two additional fields:
+
+	- `requirements_file`: path to the repository `requirements.txt` used to install dependencies (e.g., `requirements.txt`).
+	- `requirements_exact_file`: path to the exported exact requirements file produced during the run (e.g., `outputs/requirements_exact_{RUN_TS}.txt`).
+
+This ensures runs are reproducible and that the exact Python package versions used for a given run are archived with the analysis outputs.
+
 
 - The Yahoo Finance `Adj Close` series accurately reflects corporate actions for these tickers over the period 2004-01-01 to 2023-12-31.
 - Trading days are calendar business days present in the downloaded series; "N trading days" is interpreted as N rows forward in the cleaned series.
 - Signals are evaluated and aggregated independently per period slice (no carry-over of signals between periods).
 - Significance threshold for p-values is 0.05 unless otherwise specified in follow-ups.
 
+
 Notes:
 
 - Analysis treats each (Stock, Period) unit independently when aggregating; heatmap aggregation method (unweighted vs weighted) is explicitly controlled as above.
 
 - There is no plan for intraday processing; all timestamps are treated as date-only and the timezone for interpretation and any required labeling is Indian Standard Time (IST).
-
-Notes:
-
-- Analysis treats each (Stock, Period) unit independently when aggregating; heatmap aggregation method (unweighted vs weighted) is explicitly controlled as above.
 
 ## Non-Goals / Out of Scope
 

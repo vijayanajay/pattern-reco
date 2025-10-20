@@ -1,0 +1,21 @@
+# Minimal requirements with mixed pinning policy
+# Critical numeric libraries are pinned to exact versions for reproducibility.
+polars==0.19.0
+numpy==1.26.4
+scipy==1.11.3
+# Visualization and ancillary tooling use minimum-version specifiers
+matplotlib>=3.8.1
+seaborn>=0.12.2
+# Utilities
+pandas>=2.2.3  # optional interoperability layer
+scikit-learn>=1.2.2
+tqdm>=4.65.0
+# For fetching data
+yfinance>=0.2.25
+# For optional distributed execution adapters
+# dask>=2023.9.0
+# ray>=2.6.0
+
+# Notes:
+# - Adjust versions as needed; exact pins for polars/numpy/scipy preserve numeric behaviour.
+# - Use a virtual environment and run `pip install -r requirements.txt`.

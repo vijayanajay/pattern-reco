@@ -1,0 +1,19 @@
+# Template for exact run requirements. During a run, export exact resolved versions here.
+# Example: pip freeze > requirements_exact_20251020T123456Z.txt
+
+# The run automation SHOULD create a file named `requirements_exact_{RUN_TS}.txt` and include it in outputs/.
+# This template documents the expectation and fields.
+
+# Example pinned entries (replace with actual resolved versions from the run environment):
+polars==0.19.0
+numpy==1.26.4
+scipy==1.11.3
+matplotlib==3.8.1
+seaborn==0.12.2
+pandas==2.2.3
+scikit-learn==1.2.2
+tqdm==4.65.0
+yfinance==0.2.25
+
+# To generate exact requirements during a run (inside the run's venv):
+# pip freeze | sort > outputs/requirements_exact_{RUN_TS}.txt
