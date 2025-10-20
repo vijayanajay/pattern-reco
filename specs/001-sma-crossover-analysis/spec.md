@@ -18,7 +18,7 @@ As a quantitative researcher, I want to run the SMA crossover analysis over a 20
 **Acceptance Scenarios**:
 
 1. **Given** cleaned `Adj Close` prices for a stock and period, **When** the analysis runs for SMA pair (X,Y) and holding period N, **Then** the system outputs signal dates and calculated returns/drawdowns for each valid signal.
-2. **Given** multiple stocks and periods, **When** aggregation runs, **Then** a CSV `sma_crossover_analysis_results.csv` is produced with one row per (Stock, Period_Label, Short_SMA, Long_SMA, Holding_Period) containing Num_Signals, Mean_Return, Std_Dev_Return, Mean_Max_Drawdown, Win_Rate, P_Value.
+2. **Given** multiple stocks and periods, **When** aggregation runs, **Then** a timestamped canonical CSV `outputs/sma_crossover_analysis_results_{RUN_TS}.csv` is produced (one row per Stock, Period_Label, Short_SMA, Long_SMA, Holding_Period). For convenience the run MAY also write a stable copy `outputs/sma_crossover_analysis_latest.csv` pointing to the most recent canonical file. The CSV must contain Num_Signals, Num_Signals_Used, Mean_Return, Std_Dev_Return, Mean_Max_Drawdown, Win_Rate, P_Value and the expanded diagnostics columns described below.
 
 ---
 
@@ -87,8 +87,14 @@ Derived and formalized from `doc/requirements.md`.
 		- All warnings and per-ticker diagnostic summaries MUST be written to `outputs/logs/na_fill_warnings.csv` and `outputs/logs/warmup_drop_counts.csv`.
 
 - **FR-002 (Time Period Segmentation)**: System MUST slice the 2004-01-01 to 2023-12-31 range into four labeled periods: `2004-2009 (Pre-Crisis Bull Market & Crash)`, `2009-2014 (Post-Crisis Recovery)`, `2014-2019 (Modi-Era Bull Run)`, `2019-2024 (COVID Volatility & New Highs)`. All downstream analysis MUST iterate over these slices.
+ - **FR-002 (Time Period Segmentation)**: System MUST slice the 2004-01-01 to 2023-12-31 range into four non-overlapping 5-year cohorts using inclusive start/end dates. The cohorts are:
 
-	- Signals are assigned to the period in which the signal date T occurs. Forward returns used to evaluate a signal MAY use data outside the period (i.e., crossing the period boundary) as long as the required N trading days exist in the ticker's cleaned timeline. This preserves realism: a signal at period end is assigned to that period but its forward outcome is the true future outcome.
+	- `2004-01-01` to `2008-12-31` (Pre-Crisis Bull Market & Crash)
+	- `2009-01-01` to `2013-12-31` (Post-Crisis Recovery)
+	- `2014-01-01` to `2018-12-31` (Modi-Era Bull Run)
+	- `2019-01-01` to `2023-12-31` (COVID Volatility & New Highs)
+
+	Signals are assigned to the period in which the signal date T occurs (inclusive). Forward returns used to evaluate a signal MAY use data outside the period (i.e., crossing the period boundary) as long as the required N trading days exist in the ticker's cleaned timeline. This preserves realism: a signal at period end is assigned to that period but its forward outcome is the true future outcome.
 
 - **FR-003 (Signal Generation)**: For each stock and period, system MUST compute SMAs for the 10 specified pairs and record a buy signal on day T when SMA_X[T] > SMA_Y[T] AND SMA_X[T-1] <= SMA_Y[T-1]. The system MUST return signal dates per (Stock, Period, Short_SMA, Long_SMA).
 
@@ -109,28 +115,40 @@ Derived and formalized from `doc/requirements.md`.
 - **FR-005 (Aggregation & Stats)**: For each unique (Stock, Period_Label, Short_SMA, Long_SMA, Holding_Period) group, system MUST compute: Num_Signals, Mean_Return, Std_Dev_Return, Mean_Max_Drawdown, Win_Rate (returns > 0), and P_Value (one-sample t-test vs 0 using scipy.stats.ttest_1samp).
 
 	- Additional statistical rules:
-		- Raw p-values are computed via one-sample t-test. In addition, the system MUST compute Benjamini-Hochberg FDR-adjusted p-values across all aggregated rows with Num_Signals >= 5 and report them as `Adj_P_Value_BH`.
-		- Rows with Num_Signals < 5 MUST be flagged with `Low_Power_Flag = TRUE` in the CSV and excluded from the primary FDR adjustment set; they remain in the CSV for inspection.
-		- For robustness, compute `Median_Return`, `Skew`, `Kurtosis`, and a bootstrap 95% CI for the mean or median (bootstrap 1000 resamples, RNG seed=42). If Num_Signals >= 30, the t-test remains primary; for Num_Signals < 30, present both t-test and bootstrap CI and caution in interpretation.
-		- Add `Num_Signals_Used` to indicate how many signals remained after forward-data filtering for the particular holding period.
+
+		- Raw p-values are computed via a one-sample t-test (by default two-sided) against a null mean of 0. For robustness, also compute summary statistics: `Median_Return`, `Skew`, `Kurtosis`, and a bootstrap 95% CI for the mean (percentile bootstrap, 1000 resamples, RNG seed=42). If `Num_Signals_Used >= 30` the t-test is treated as the primary inferential statistic; if `5 <= Num_Signals_Used < 30` present both the t-test and the bootstrap CI and add a caution about small-sample inference; if `Num_Signals_Used < 5` set `Low_Power_Flag = TRUE` and exclude the row from BH-FDR (but retain it in the CSV for inspection).
+
+		- Definitions and usage:
+
+			- `Num_Signals` = raw count of detected signals before discarding for insufficient forward data.
+			- `Num_Signals_Used` = count of signals remaining after discarding signals that lack sufficient forward data for the given holding period.
+
+			- All per-holding-period aggregations, p-values, and the BH-FDR procedure MUST be computed using `Num_Signals_Used`.
+
+		- BH-FDR (Benjamini-Hochberg) adjustment:
+
+			- For each holding period separately (10, 15, 20 days), collect the flattened set of aggregated rows (Stock, Period_Label, Short_SMA, Long_SMA) with `Num_Signals_Used >= 5` and compute BH-FDR adjusted p-values. Record the result in the `Adj_P_Value_BH` column. Rows with `Num_Signals_Used < 5` must have `Adj_P_Value_BH = NA`.
 
 - **FR-006 (Buy-and-Hold Benchmark)**: For each stock and period, system MUST compute buy-and-hold return = (Last - First)/First and include this in the final report aggregation.
 
-- **FR-007 (CSV Output)**: System MUST write `sma_crossover_analysis_results.csv` containing columns: Stock, Period_Label, Short_SMA, Long_SMA, Holding_Period, Num_Signals, Mean_Return, Std_Dev_Return, Mean_Max_Drawdown, Win_Rate, P_Value.
 
-	- Expanded CSV columns (diagnostic & reproducibility):
-		- Stock, Period_Label, Period_Start, Period_End, Short_SMA, Long_SMA, Holding_Period,
-		- Num_Signals, Num_Signals_Used, Low_Power_Flag (boolean), Mean_Return, Std_Dev_Return, Median_Return,
-		- Mean_CI_lower, Mean_CI_upper (bootstrap 95% CI), Mean_Max_Drawdown, Win_Rate, P_Value, Adj_P_Value_BH,
-		- Skew, Kurtosis, Overlap_Mode, Entry_Mode, Notes (free-text for warnings e.g., "insufficient history"), and Timestamp/Version.
-		- Write the aggregated CSV to `outputs/sma_crossover_analysis_results.csv` and a companion diagnostics file `outputs/sma_crossover_analysis_diagnostics.csv` containing per-ticker warnings and warmup counts.
+- **FR-007 (CSV Output)**: System MUST write a timestamped canonical CSV `outputs/sma_crossover_analysis_results_{RUN_TS}.csv` containing at minimum the following columns:
+
+	- Stock, Period_Label, Period_Start, Period_End, Short_SMA, Long_SMA, Holding_Period,
+	- Num_Signals, Num_Signals_Used, Low_Power_Flag (boolean), Mean_Return, Std_Dev_Return, Median_Return,
+	- Mean_CI_lower, Mean_CI_upper (bootstrap 95% CI), Mean_Max_Drawdown, Win_Rate, P_Value, Adj_P_Value_BH,
+	- Skew, Kurtosis, Overlap_Mode, Entry_Mode, Notes (free-text for warnings e.g., "insufficient history"), and Timestamp/Version.
+
+	- The run MUST also write a companion diagnostics file `outputs/sma_crossover_analysis_diagnostics_{RUN_TS}.csv` containing per-ticker warnings and warmup counts. For convenience the run MAY also write stable copies named `outputs/sma_crossover_analysis_latest.csv` and `outputs/sma_crossover_analysis_diagnostics_latest.csv` that point to the most recent canonical files.
 
 - **FR-008 (Heatmap Visualization)**: System MUST create `heatmap_avg_mean_return.png` that visualizes the average Mean_Return across all stocks and periods for each tested SMA pair using a divergent colormap and clearly labeled axes.
 
 	- Aggregation and output rules:
+	- Aggregation and output rules:
 		- Heatmap primary cell value = unweighted mean of `Mean_Return` across all (Stock, Period_Label) aggregated rows for that SMA pair and holding period. Also produce a weighted heatmap where each cell is weighted by `Num_Signals_Used` to reflect sample size.
-		- Support heatmaps per-holding-period (10,15,20) or aggregated across holding periods with clear caption.
-		- Save heatmaps at 300 DPI to `outputs/heatmap_avg_mean_return.png` and `outputs/heatmap_weighted_by_signals.png` with color scale centered at 0% mean return.
+		- Heatmaps MUST be produced per holding period (10, 15, 20) by default. A separate aggregated heatmap across holding periods may be generated on demand; such aggregation must be explicitly captioned.
+		- Heatmap axes: x-axis = Short_SMA, y-axis = Long_SMA. Because the tested SMA pairs form an explicit list (not necessarily a full Cartesian grid), cells for Short/Long combinations that were not tested must be masked (greyed out) and annotated in the caption as "not tested". Each heatmap must use a divergent colormap centered at 0% mean return and include a colorbar and cell annotations when feasible.
+		- Save heatmaps at 300 DPI to `outputs/heatmap_avg_mean_return_{holding_period}d.png` and `outputs/heatmap_weighted_by_signals_{holding_period}d.png` with color scale centered at 0% mean return.
 
 - **FR-009 (Markdown Summary Report)**: System MUST write `analysis_summary.md` containing Executive Summary, Heatmap reference, Consistency Analysis (highlight parameter regions with positive mean returns and p-value < 0.05), Top Performers (top 5 significant rows), Fallen Angel analysis for `YESBANK.NS`, Benchmark Comparison, and Signal Frequency Analysis.
 
@@ -139,12 +157,18 @@ Derived and formalized from `doc/requirements.md`.
 		- The Overlap_Mode and Entry_Mode used for the run.
 		- A section on multiple-testing correction describing the BH-FDR procedure and which rows were included/excluded.
 		- Fallen Angel (`YESBANK.NS`) subsection: include a time-series PNG (`outputs/yesbank_signals.png`) with signals annotated, a small table of each signal (SignalDate, EntryPrice, Return_10/15/20, Max_Drawdown_10/15/20), a note on data truncation and number of usable signals, and whether any p-values remain significant after FDR correction.
+		- A reproducibility header listing versions of key libraries (pandas, numpy, scipy, matplotlib, seaborn, python), the RNG seed used, and the git commit hash and branch used for the run.
+		- The Overlap_Mode and Entry_Mode used for the run. Defaults: `Overlap_Mode` = `overlapping` (count signals independently) and `Entry_Mode` = `entry_on_T` (use cleaned Adj Close on T). These defaults must be written to the run manifest.
+		- A section on multiple-testing correction describing the BH-FDR procedure and which rows were included/excluded.
+		- Fallen Angel (`YESBANK.NS`) subsection: include a time-series PNG (`outputs/yesbank_signals.png`) with signals annotated, a small table of each signal (SignalDate, EntryPrice, Return_10/15/20, Max_Drawdown_10/15/20), a note on data truncation and number of usable signals, and whether any p-values remain significant after FDR correction.
 
 ### Key Entities
 
 - **TickerTimeSeries**: Daily adjusted close prices keyed by date for a ticker; cleaned via forward-fill and annotated with NaN fill counts.
 - **SignalRecord**: {Ticker, Period_Label, Short_SMA, Long_SMA, SignalDate, EntryPrice, Returns_{10,15,20}, MaxDrawdowns_{10,15,20}}
 - **AggregatedMetric**: {Stock, Period_Label, Short_SMA, Long_SMA, Holding_Period, Num_Signals, Mean_Return, Std_Dev_Return, Mean_Max_Drawdown, Win_Rate, P_Value}
+
+ - Diagnostics and logging: the run MUST write `outputs/logs/na_fill_warnings.csv` (per-ticker counts of pre-forward-fill NaNs and percent missing), and `outputs/logs/warmup_drop_counts.csv` (per-ticker counts of rows dropped due to SMA warmup). When more than 10% of dates in a ticker-period are missing before forward-fill, that ticker-period MUST be flagged in diagnostics as `Insufficient_History` and included in `outputs/sma_crossover_analysis_diagnostics.csv` with a `Low_Power_Flag` note. Forward-fill is still applied but the flag warns downstream users.
 
 ## Success Criteria *(mandatory)*
 
@@ -159,14 +183,59 @@ Derived and formalized from `doc/requirements.md`.
 Additionally:
 
 - The CSV MUST include `Adj_P_Value_BH` and `Low_Power_Flag` columns as described.
-- The run MUST write the `outputs/logs` folder with `na_fill_warnings.csv` and `warmup_drop_counts.csv` and include a `run_manifest.json` listing parameters (SMA pairs, date range, Overlap_Mode, Entry_Mode, RNG seed, library versions).
+
+- The run MUST write the `outputs/logs` folder with timestamped log files named `na_fill_warnings_{RUN_TS}.csv` and `warmup_drop_counts_{RUN_TS}.csv` and include a timestamped `run_manifest_{RUN_TS}.json` listing parameters (SMA pairs, date range, Overlap_Mode, Entry_Mode, RNG seed, library versions, git commit, git branch, OS). Use RUN_TS = UTC compact ISO format `YYYYMMDDTHHMMSSZ` for canonical filenames. The run MAY also write stable convenience copies using `_latest` suffix.
+
+
+
+
+
+
+
+
+
+
+
+- The run MUST write the `outputs/logs` folder with `na_fill_warnings.csv` and `warmup_drop_counts.csv` and include a timestamped `run_manifest_{YYYYMMDD_HHMMSS}.json` listing parameters (SMA pairs, date range, Overlap_Mode, Entry_Mode, RNG seed, library versions, git commit, git branch, OS). The default filenames for main outputs must include a timestamp (e.g., `outputs/sma_crossover_analysis_results_{YYYYMMDD_HHMMSS}.csv`).
 
 ## Assumptions
+
+## Run contract (API / CLI schema)
+
+This project exposes a simple run contract for implementers. The run may be invoked via a Python API or a CLI script that accepts the inputs below and writes the outputs described.
+
+- Inputs:
+
+	- `tickers`: List[str] or path to CSV (column `Ticker`).
+	- `start_date`: string, YYYY-MM-DD (inclusive).
+	- `end_date`: string, YYYY-MM-DD (inclusive).
+	- `sma_pairs`: List[tuple[int,int]]; default = the 10 canonical pairs in this spec.
+	- `holding_periods`: List[int]; default = [10, 15, 20].
+	- `overlap_mode`: one of `overlapping` (default) or `non_overlapping`.
+	- `entry_mode`: one of `entry_on_T` (default) or `entry_next_open`.
+	- `seed`: int RNG seed for bootstrap (default 42).
+	- `output_dir`: path where `outputs/` will be written (default: repository `outputs/` folder).
+
+- Outputs (canonical):
+
+	- `outputs/sma_crossover_analysis_results_{RUN_TS}.csv` (canonical aggregated CSV).
+	- `outputs/sma_crossover_analysis_diagnostics_{RUN_TS}.csv` (per-ticker diagnostics).
+	- `outputs/logs/na_fill_warnings_{RUN_TS}.csv`, `outputs/logs/warmup_drop_counts_{RUN_TS}.csv`.
+	- `outputs/heatmap_avg_mean_return_{holding_period}d_{RUN_TS}.png` and weighted variant.
+	- `outputs/analysis_summary_{RUN_TS}.md` and any focal ticker PNGs (e.g., `outputs/yesbank_signals_{RUN_TS}.png`).
+	- `outputs/run_manifest_{RUN_TS}.json` containing inputs, environment (library versions), git commit/branch, OS, and timestamps.
+
 
 - The Yahoo Finance `Adj Close` series accurately reflects corporate actions for these tickers over the period 2004-01-01 to 2023-12-31.
 - Trading days are calendar business days present in the downloaded series; "N trading days" is interpreted as N rows forward in the cleaned series.
 - Signals are evaluated and aggregated independently per period slice (no carry-over of signals between periods).
 - Significance threshold for p-values is 0.05 unless otherwise specified in follow-ups.
+
+Notes:
+
+- Analysis treats each (Stock, Period) unit independently when aggregating; heatmap aggregation method (unweighted vs weighted) is explicitly controlled as above.
+
+- There is no plan for intraday processing; all timestamps are treated as date-only and the timezone for interpretation and any required labeling is Indian Standard Time (IST).
 
 Notes:
 
@@ -189,4 +258,6 @@ Notes:
 
 - Unit tests should cover: SMA signal generator for edge cases, forward-return and drawdown computation including boundary discard behavior, aggregation correctness, and CSV/PNG writer presence.
 - Validate that Num_Signals >= 1 for rows included; flag low-sample rows (Num_Signals < 5).
+
+- Bootstrap 95% CI: use percentile bootstrap with 1000 resamples and RNG seed=42. Report `Mean_CI_lower` and `Mean_CI_upper` computed from the bootstrap distribution (percentile method). If BCa intervals are required, document and implement them in a follow-up.
 
